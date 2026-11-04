@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101827">
-<title>ClearSend — Status HD | Single-thread Quality Edition</title>
+<title>ClearSend — Frame-Accurate Status HD</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#121d2e;--panel2:#172438;--line:#29384e;--text:#edf4ff;--muted:#9aabc2;--blue:#63a8ff;--cyan:#53e0d0;--good:#6ee7b7;--warn:#ffd18a}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -15%,#1c3556 0,transparent 48%),var(--bg);color:var(--text);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -27,7 +27,7 @@
 <body>
 <main class="shell">
 <header class="top"><div class="brand"><div class="logo">C</div>ClearSend</div><div class="local">● Private · processed on this device</div></header>
-<section class="hero"><div class="eyebrow">Media, ready to share</div><h1>Keep your moments <span>clear.</span></h1><p>Prepare photos and videos before sharing to WhatsApp. Resize and encode with sensible quality settings, then save the optimized file. No account, upload or subscription.</p></section>
+<section class="hero"><div class="eyebrow">Media, ready to share</div><h1>Keep your moments <span>clear.</span></h1><p>Prepare video frames accurately for WhatsApp Status with browser-native H.264 encoding, or improve your photos with careful resizing and subtle detail recovery. No account, media upload or subscription.</p></section>
 <div class="grid">
 <section class="panel">
 <div class="step">01 / Choose media</div>
@@ -40,23 +40,24 @@
 <section class="panel">
 <div class="step">02 / Output settings</div>
 <div id="videoSettings" class="settings">
-<div class="field"><label for="videoQuality">Video quality</label><select id="videoQuality"><option value="status">Status HD · 1080p / ~3.4 Mbps · recommended</option><option value="high">High detail · larger file</option><option value="balanced">Balanced · smaller file</option><option value="small">Compact · stronger compression</option></select></div>
-<div class="field"><label for="videoFps">Frame rate</label><select id="videoFps"><option value="30">Up to 30 FPS (never increase FPS)</option><option value="source" selected>Preserve source FPS · smoothest</option></select></div>
+<div class="field"><label for="videoQuality">Video quality</label><select id="videoQuality"><option value="status">Status HD · up to 1080p / ~3.8 Mbps · recommended</option><option value="high">High detail · ~5.5 Mbps</option><option value="balanced">Balanced · ~2.8 Mbps</option><option value="small">Compact · ~1.8 Mbps</option></select></div>
+<div class="field"><label for="videoFps">Frame rate</label><select id="videoFps"><option value="30" selected>Up to 30 FPS · best for Status</option><option value="source">Preserve source FPS · for testing</option></select></div>
 <div class="field"><label for="videoSize">Maximum resolution</label><select id="videoSize"><option value="1080">Up to 1080p</option><option value="720">Up to 720p · smaller file</option><option value="source">Keep source dimensions</option></select></div>
-<label class="check"><input id="keepAudio" type="checkbox" checked> Include audio · AAC 128 kbps (when present)</label>
+<div class="field"><label for="videoEngine">Video engine</label><select id="videoEngine"><option value="native" selected>WebCodecs · fast, frame-accurate (recommended)</option><option value="x264">x264 · slow, software encode (experimental)</option></select><p class="hint">Native encoding preserves timestamps and can copy AAC audio without recompression. x264 is slower and downloads a larger engine.</p></div>
+<label class="check"><input id="keepAudio" type="checkbox" checked> Preserve audio · AAC when compatible</label>
 </div>
 <div id="photoSettings" class="settings" hidden>
-<div class="field"><label for="photoSize">Maximum image dimension</label><select id="photoSize"><option value="1920">1920 px · recommended</option><option value="2560">2560 px · extra detail</option><option value="1280">1280 px · smaller file</option><option value="original">Keep original dimensions</option></select></div>
-<div class="field"><label for="photoQuality">JPEG quality <span id="qualityLabel">90%</span></label><input id="photoQuality" type="range" min="70" max="96" value="90"></div>
-<label class="check"><input id="photoFormat" type="checkbox"> Export as WebP instead of JPEG (smaller; compatibility may vary)</label>
+<div class="field"><label for="photoSize">Maximum image dimension</label><select id="photoSize"><option value="1920">1920 px · Status HD (recommended)</option><option value="2560">2560 px · extra detail</option><option value="1280">1280 px · compact</option><option value="original">Keep original dimensions</option></select></div>
+<div class="field"><label for="photoQuality">JPEG quality <span id="qualityLabel">93%</span></label><input id="photoQuality" type="range" min="75" max="97" value="93"></div>
+<label class="check"><input id="photoEnhance" type="checkbox" checked> Gentle detail recovery after resizing (photos only)</label><label class="check"><input id="photoFormat" type="checkbox"> Export as WebP instead of JPEG (smaller; compatibility may vary)</label>
 </div>
 <div class="specs"><div class="spec"><small>Processing</small><b>On device</b></div><div class="spec"><small>Account</small><b>Not needed</b></div><div class="spec"><small>Cost</small><b>Free beta</b></div></div>
 <button class="btn" id="process" disabled style="width:100%;margin-top:17px">Choose a file first</button>
-<p class="note">Status HD uses H.264 around 3.4 Mbps with AAC audio as a practical starting point from one PureStatus sample, not a quality guarantee. The single-thread FFmpeg engine runs on your device without SharedArrayBuffer or canvas re-recording. The engine (~30 MB) is downloaded from a CDN when first used; your media is not uploaded. Long videos and iPhone memory limits may still prevent a conversion. Recommended: short clips under 50 MB on phones, under 120 MB on desktop. HDR-to-SDR color conversion is not yet reliable. Source GPS and camera metadata are removed from compressed exports. WhatsApp can still recompress Status videos.</p>
+<p class="note">The new browser-native engine decodes and encodes media frames with timestamps, not a real-time screen recording. H.264 video is encoded around 3.8 Mbps at up to 1080p / 30 FPS; audio is copied when compatible. A separate x264 engine is optional. No engine can guarantee that WhatsApp won't recompress your Status. Media stays on your device; only the open-source processing library is fetched from a CDN. Use short clips first. HEVC/HDR color conversion and some iPhone file types may be unsupported. Re-encoding can reduce quality even when dimensions and bitrate look good.</p>
 </section>
 <section class="panel wide" id="workPanel" hidden>
 <div class="step">03 / Processing</div><div class="status" id="status">Getting ready…</div><div class="progress"><i id="bar"></i></div><div class="actions"><button class="btn secondary" type="button" id="cancel" hidden>Cancel conversion</button><button class="btn secondary" type="button" id="original" hidden>Download original instead</button></div>
-<div class="result" id="result"><div class="step">Optimized file</div><video id="outVideo" controls playsinline hidden></video><img id="outImage" hidden alt="Optimized photo"><div class="fileline"><span id="outMeta">—</span><button class="btn" id="download">Download</button></div><p class="hint" id="resultHint"></p></div>
+<div class="result" id="result"><div class="step">Optimized file</div><video id="outVideo" controls playsinline hidden></video><img id="outImage" hidden alt="Optimized photo"><div class="fileline"><span id="outMeta">—</span><div class="actions" style="margin:0"><button class="btn" id="download">Download</button><button class="btn secondary" id="share" hidden>Share file</button></div></div><p class="hint" id="resultHint"></p></div>
 </section>
 <section class="panel wide">
 <div class="step">04 / Upload to WhatsApp</div>
@@ -64,27 +65,74 @@
 <p class="note">WhatsApp Status does not guarantee HD delivery. Keep your best-quality original and compare the posted Status on another device. ClearSend is independent of PureStatus and WhatsApp; no video watermark is added.</p>
 </section>
 </div>
-<div class="footer">ClearSend · Single-thread quality edition · Free beta · No account<br>Video engine: <a href="https://github.com/ffmpegwasm/ffmpeg.wasm" target="_blank" rel="noopener noreferrer" style="color:#9aabc2">FFmpeg.wasm</a> (GPL-based codec core)</div>
+<div class="footer">ClearSend · Frame-accurate beta · Free · No account<br>Video engine: <a href="https://mediabunny.dev" target="_blank" rel="noopener noreferrer" style="color:#9aabc2">Mediabunny / WebCodecs</a> · Optional x264 via FFmpeg.wasm</div>
 </main>
 <script>
 const $ = id => document.getElementById(id);
 let mode='video', file=null, outputBlob=null, outputUrl=null, sourceUrl=null, busy=false;
-let engine=null, engineAssets=null, cancelRequested=false;
+let engine=null, engineAssets=null, cancelRequested=false, nativeConversion=null, nativeLibrary=null;
 let sourceInfo=null, ffmpegLog=[];
 const CORE_BASE='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
 const bytes=n=> n<1024*1024 ? (n/1024).toFixed(0)+' KB':(n/(1024*1024)).toFixed(2)+' MiB';
 const errorText=e=>e instanceof Error?e.message:String(e);
 function update(t,p){$('status').textContent=t;if(Number.isFinite(p))$('bar').style.width=Math.max(0,Math.min(100,p))+'%';}
-function cleanup(){if(outputUrl)URL.revokeObjectURL(outputUrl);outputUrl=null;outputBlob=null;$('outVideo').pause();$('outVideo').removeAttribute('src');$('outVideo').load();$('outImage').removeAttribute('src');$('outVideo').hidden=true;$('outImage').hidden=true;$('result').style.display='none';$('workPanel').hidden=true;$('original').hidden=true;$('cancel').hidden=true;}
+function cleanup(){if(outputUrl)URL.revokeObjectURL(outputUrl);outputUrl=null;outputBlob=null;$('outVideo').pause();$('outVideo').removeAttribute('src');$('outVideo').load();$('outImage').removeAttribute('src');$('outVideo').hidden=true;$('outImage').hidden=true;$('result').style.display='none';$('share').hidden=true;$('workPanel').hidden=true;$('original').hidden=true;$('cancel').hidden=true;}
 function resetSource(){file=null;sourceInfo=null;if(sourceUrl)URL.revokeObjectURL(sourceUrl);sourceUrl=null;cleanup();$('fileInfo').hidden=true;$('sourceVideo').pause();$('sourceVideo').removeAttribute('src');$('sourceVideo').load();$('sourceVideo').hidden=true;$('sourceImage').hidden=true;$('process').disabled=true;$('process').textContent='Choose a file first';}
 function selectMode(m){if(busy)return;resetSource();mode=m;$('videoTab').classList.toggle('active',m==='video');$('photoTab').classList.toggle('active',m==='photo');$('videoSettings').hidden=m!=='video';$('photoSettings').hidden=m!=='photo';$('file').accept=m==='video'?'video/*':'image/*';$('choose').textContent='Choose '+m;$('formatHint').textContent=m==='video'?'MP4 and MOV supported when the video engine can decode them. Use short clips for Status. Keep this tab open while encoding.':'JPG, PNG, WebP and other browser-readable image formats.';}
 function selectFile(f){if(busy||!f)return;if(mode==='video'&&!(/video\//.test(f.type)||/\.(mp4|mov|m4v|webm|mkv)$/i.test(f.name))){alert('Please choose a video.');return;}if(mode==='photo'&&!f.type.startsWith('image/')){alert('Please choose a photo.');return;}resetSource();file=f;$('fileInfo').hidden=false;$('fileName').replaceChildren(document.createTextNode(f.name));const meta=document.createElement('small');meta.textContent=bytes(f.size)+' · '+(f.type||'unknown type');$('fileName').append(meta);sourceUrl=URL.createObjectURL(file);if(mode==='video'){$('sourceVideo').src=sourceUrl;$('sourceVideo').hidden=false;$('sourceVideo').onloadedmetadata=()=>{if(file!==f)return;sourceInfo={w:$('sourceVideo').videoWidth,h:$('sourceVideo').videoHeight,d:$('sourceVideo').duration};meta.textContent=bytes(f.size)+' · '+sourceInfo.w+' × '+sourceInfo.h+' · '+(Number.isFinite(sourceInfo.d)?sourceInfo.d.toFixed(1)+' sec':'duration unknown');};$('sourceImage').hidden=true;}else{$('sourceImage').src=sourceUrl;$('sourceImage').hidden=false;$('sourceVideo').hidden=true;}$('process').disabled=false;$('process').textContent=mode==='video'?'Optimize video':'Optimize photo';}
 $('videoTab').onclick=()=>selectMode('video');$('photoTab').onclick=()=>selectMode('photo');$('choose').onclick=()=>{if(busy)return;$('file').value='';$('file').click();};$('file').onchange=e=>selectFile(e.target.files[0]);$('clear').onclick=()=>{if(!busy)resetSource();};$('drop').ondragover=e=>{e.preventDefault();$('drop').classList.add('over');};$('drop').ondragleave=()=>{$('drop').classList.remove('over');};$('drop').ondrop=e=>{e.preventDefault();$('drop').classList.remove('over');selectFile(e.dataTransfer.files[0]);};$('photoQuality').oninput=e=>$('qualityLabel').textContent=e.target.value+'%';
 $('original').onclick=()=>{if(!file)return;const a=document.createElement('a');a.href=sourceUrl;a.download=file.name;a.click();};
-$('cancel').onclick=()=>{cancelRequested=true;if(engine){engine.stop();engine=null;}update('Conversion cancelled. Your original video has not been changed.',0);$('cancel').hidden=true;$('original').hidden=false;};
+$('cancel').onclick=()=>{cancelRequested=true;if(nativeConversion){nativeConversion.cancel().catch(()=>{});}if(engine){engine.stop();engine=null;}update('Conversion cancelled. Your original video has not been changed.',0);$('cancel').hidden=true;$('original').hidden=false;};
 $('process').onclick=async()=>{if(!file||busy)return;busy=true;cancelRequested=false;$('process').disabled=true;cleanup();$('workPanel').hidden=false;$('original').hidden=mode!=='video';$('cancel').hidden=mode!=='video';update('Preparing…',2);try{if(mode==='video')await processVideo();else await processPhoto();}catch(e){console.error('[ClearSend]',e);update(cancelRequested?'Conversion cancelled. Original video is safe.':'Could not process this file: '+errorText(e)+'. Your source file is unchanged.',0);$('original').hidden=mode!=='video';}finally{busy=false;$('process').disabled=false;$('cancel').hidden=true;}};
+// Downscale progressively on very large photos, retaining edges before a very gentle unsharp pass.
 async function processPhoto(){
- let bitmap;if(typeof createImageBitmap==='function')bitmap=await createImageBitmap(file);else bitmap=await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=sourceUrl;});let w=bitmap.width||bitmap.naturalWidth,h=bitmap.height||bitmap.naturalHeight;const max=$('photoSize').value==='original'?Math.max(w,h):Number($('photoSize').value);const factor=Math.min(1,max/Math.max(w,h));w=Math.max(1,Math.round(w*factor));h=Math.max(1,Math.round(h*factor));const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(bitmap,0,0,w,h);bitmap.close?.();update('Encoding image…',70);const ext=$('photoFormat').checked?'webp':'jpg',type='image/'+(ext==='jpg'?'jpeg':'webp');outputBlob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Image export failed')),type,Number($('photoQuality').value)/100));outputUrl=URL.createObjectURL(outputBlob);$('outImage').src=outputUrl;$('outImage').hidden=false;$('outVideo').hidden=true;showResult(file.name.replace(/\.[^.]+$/,'')+'_clearsend.'+ext,`${w} × ${h} · ${bytes(file.size)} → ${bytes(outputBlob.size)}`,'Photo processed locally. GPS/EXIF tags are not copied by canvas export.');update('Photo ready to download.',100);
+ const f=file;
+ update('Reading original photo…',12);
+ let bitmap;
+ if(typeof createImageBitmap==='function') bitmap=await createImageBitmap(f,{imageOrientation:'from-image'});
+ else bitmap=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(Error('Could not decode image'));im.src=sourceUrl;});
+ const naturalW=bitmap.width||bitmap.naturalWidth,naturalH=bitmap.height||bitmap.naturalHeight;
+ if(naturalW*naturalH>80e6)throw Error('This image is too large for browser processing.');
+ const limit=$('photoSize').value==='original'?Math.max(naturalW,naturalH):Number($('photoSize').value);
+ const factor=Math.min(1,limit/Math.max(naturalW,naturalH));
+ const w=Math.max(1,Math.round(naturalW*factor)),h=Math.max(1,Math.round(naturalH*factor));
+ let input=bitmap,iw=naturalW,ih=naturalH;
+ // Avoid abrupt 4K-to-1080p downscaling on engines with weaker resamplers.
+ while(Math.max(iw/w,ih/h)>2.1){
+   const next=document.createElement('canvas'); next.width=Math.max(w,Math.round(iw/2));next.height=Math.max(h,Math.round(ih/2));
+   const nx=next.getContext('2d',{alpha:false,willReadFrequently:false});nx.imageSmoothingEnabled=true;nx.imageSmoothingQuality='high';nx.drawImage(input,0,0,next.width,next.height);
+   iw=next.width;ih=next.height;input=next;
+ }
+ const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+ const ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:true});
+ ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(input,0,0,w,h);
+ bitmap.close?.();
+ if($('photoEnhance').checked && w*h<=13e6){
+   update('Restoring fine details…',50);
+   const softened=document.createElement('canvas');softened.width=w;softened.height=h;
+   const bx=softened.getContext('2d',{willReadFrequently:true});bx.filter='blur(0.85px)';bx.drawImage(canvas,0,0);
+   const orig=ctx.getImageData(0,0,w,h),blur=bx.getImageData(0,0,w,h);
+   const a=orig.data,b=blur.data;
+   const strength=0.22;
+   for(let i=0;i<a.length;i+=4){
+     for(let ch=0;ch<3;ch++){
+       const delta=a[i+ch]-b[i+ch];
+       // Avoid making halo artifacts around sharp edges.
+       a[i+ch]=Math.max(0,Math.min(255,a[i+ch]+strength*Math.max(-28,Math.min(28,delta))));
+     }
+   }
+   ctx.putImageData(orig,0,0);
+ }
+ if(cancelRequested)throw Error('Cancelled');
+ update('Encoding high-quality photo…',75);
+ const ext=$('photoFormat').checked?'webp':'jpg',type=ext==='jpg'?'image/jpeg':'image/webp';
+ const quality=Number($('photoQuality').value)/100;
+ const blob=await new Promise((resolve,reject)=>canvas.toBlob(v=>v?resolve(v):reject(Error('Photo export failed')),type,quality));
+ if(cancelRequested)throw Error('Cancelled');
+ outputBlob=blob;outputUrl=URL.createObjectURL(blob);$('outImage').src=outputUrl;$('outImage').hidden=false;$('outVideo').hidden=true;
+ showResult(f.name.replace(/\.[^.]+$/,'')+'_clearsend.'+ext,`${w} × ${h} · ${bytes(f.size)} → ${bytes(blob.size)}`,
+   'High-quality resize'+($('photoEnhance').checked?' + subtle detail recovery':'')+'. Photo saved locally; source GPS/EXIF not copied.');
+ update('Photo ready.',100);
 }
 
 // FFmpeg single-thread worker. The complete worker is authored INSIDE this HTML,
@@ -162,7 +210,124 @@ function videoDetails(url,timeoutMs=15000){
    v.src=url;
  });
 }
+// Browser-native, frame-accurate video path inspired by the architecture studied in Kilat.txt.
+// Uses the independent Mediabunny project rather than copying reference site scripts.
+const NATIVE_CDNS=[
+ 'https://cdn.jsdelivr.net/npm/mediabunny@1.64.0/dist/bundles/mediabunny.cjs',
+ 'https://unpkg.com/mediabunny@1.64.0/dist/bundles/mediabunny.cjs'
+];
+async function getNativeLibrary(){
+ if(nativeLibrary)return nativeLibrary;
+ if(window.Mediabunny){nativeLibrary=window.Mediabunny;return nativeLibrary;}
+ update('Loading browser-native media tools…',3);
+ for(const url of NATIVE_CDNS){
+   try{
+     await new Promise((resolve,reject)=>{
+       const s=document.createElement('script');s.src=url;s.async=true;
+       const timeout=setTimeout(()=>{s.remove();reject(Error('Library download timed out'))},20000);
+       s.onload=()=>{clearTimeout(timeout);resolve()};s.onerror=()=>{clearTimeout(timeout);s.remove();reject(Error('CDN not reachable'))};
+       document.head.appendChild(s);
+     });
+     if(window.Mediabunny){nativeLibrary=window.Mediabunny;return nativeLibrary;}
+   }catch(e){console.warn('ClearSend library source unavailable',url,e);}
+ }
+ throw Error('Could not load the browser-native media library. Try the x264 engine, or check internet access.');
+}
+function bitrateForProfile(p){return {status:3.8e6,high:5.5e6,balanced:2.8e6,small:1.8e6}[p]||3.8e6;}
+async function processVideoNative(){
+ if(!('VideoEncoder' in window)||!('VideoDecoder' in window))
+  throw Error('This browser does not expose the WebCodecs video encoder/decoder. Try the optional x264 engine.');
+ const M=await getNativeLibrary();
+ if(cancelRequested)throw Error('Cancelled');
+ const input=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(file)});
+ if(!await input.canRead())throw Error('This video container cannot be read by the native engine.');
+ const track=await input.getPrimaryVideoTrack();
+ if(!track)throw Error('The file has no usable video track.');
+ if(!(await track.canDecode()))throw Error('Your browser cannot decode this video codec (often unsupported HEVC/HDR).');
+ const sw=await track.getDisplayWidth(),sh=await track.getDisplayHeight();
+ const sourceDuration=await input.computeDuration();
+ if(!Number.isFinite(sourceDuration)||sourceDuration<=0)throw Error('Invalid video duration.');
+ if(sourceDuration>180)throw Error('For this beta, use video clips up to 3 minutes.');
+ const dims=scaledSize(sw,sh,$('videoSize').value);
+ const rate=bitrateForProfile($('videoQuality').value);
+ const keepSound=$('keepAudio').checked;
+ let sourceFps=0;
+ try{const m=await track.computeFrameRateMetrics();sourceFps=m.bestGuessFrameRate||0;}catch(e){}
+ const fpsLimit=$('videoFps').value==='30' && sourceFps>30.05?30:null;
+ const result=new M.Output({format:new M.Mp4OutputFormat({fastStart:'in-memory'}),target:new M.BufferTarget()});
+ const videoOpts={codec:'avc',width:dims.w,height:dims.h,fit:'contain',
+  quality:new M.Quality({bitrate:rate}),keyFrameInterval:2,hardwareAcceleration:'prefer-hardware',
+  allowTransformationMetadata:false,forceTranscode:true};
+ if(fpsLimit)videoOpts.frameRate=30;
+ update(`Encoding frames at ${dims.w} × ${dims.h} · ~${(rate/1e6).toFixed(1)} Mbps…`,10);
+ const options={input,output:result,tracks:'primary',video:videoOpts,
+  audio:keepSound?{codec:'aac'}:{discard:true},tags:{}};
+ const conversion=await M.Conversion.init(options);
+ nativeConversion=conversion;
+ try{
+   if(!conversion.isValid){
+     const reason=conversion.discardedTracks?.map(x=>x.reason).filter(Boolean).join(', ');
+     throw Error('Native conversion not supported for this input'+(reason?' ('+reason+')':'')+'.');
+   }
+   if(conversion.discardedTracks?.some(x=>x.track?.type==='video'))
+      throw Error('Video track could not be encoded as H.264.');
+   if(keepSound&&conversion.discardedTracks?.some(x=>x.track?.type==='audio'))
+      throw Error('Audio track cannot be preserved in MP4 with this browser.');
+   conversion.onProgress=p=>{if(!cancelRequested)update(`Encoding complete video frames… ${Math.round(p*100)}%`,12+Math.round(p*78));};
+   await conversion.execute();
+   if(cancelRequested)throw Error('Cancelled');
+   const buffer=result.target.buffer;
+   if(!buffer||buffer.byteLength<2000)throw Error('Native encoder produced no MP4 output.');
+   const blob=new Blob([buffer],{type:'video/mp4'});
+   await verifyAndPublish(blob,sw,sh,sourceDuration,'WebCodecs H.264',M,sourceFps,keepSound,input);
+ }finally{nativeConversion=null;}
+}
+async function verifyAndPublish(blob,sw,sh,sd,engineLabel,M=null,sourceFps=0,keepSound=true,sourceInput=null){
+ update('Checking file size, dimensions, duration and playback…',94);
+ const u=URL.createObjectURL(blob);
+ try{
+   const info=await videoDetails(u,22000);
+   const expected=scaledSize(sw,sh,$('videoSize').value);
+   if(!info.w||!info.h)throw Error('Output does not contain playable video.');
+   if(Math.min(info.w/expected.w,info.h/expected.h)<0.94)
+     throw Error(`Resolution safeguard: expected ${expected.w} × ${expected.h}, got ${info.w} × ${info.h}. Output rejected.`);
+   if(Number.isFinite(info.d)&&Number.isFinite(sd)&&sd>2&&Math.abs(info.d-sd)>Math.max(.55,sd*.05))
+     throw Error(`Duration safeguard: ${sd.toFixed(1)}s became ${info.d.toFixed(1)}s. Output rejected.`);
+   // A timestamp-only MP4 check cannot detect lost frames. Inspect actual packet counts where possible.
+   let verifiedFps='';
+   if(M){
+     const check=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(blob)});
+     const outTrack=await check.getPrimaryVideoTrack();
+     if(!outTrack)throw Error('Encoded file has no video track.');
+     const outStats=await outTrack.computePacketStats();
+     const outRate=outStats.averagePacketRate;
+     let expected=sourceFps;
+     if($('videoFps').value==='30'&&expected>30)expected=30;
+     if(expected>=20&&outRate<expected*.72)
+       throw Error(`Frame-rate safeguard: expected roughly ${expected.toFixed(1)} FPS but output contains ${outRate.toFixed(1)} FPS. Output rejected.`);
+     const originalAudio=sourceInput&&await sourceInput.getPrimaryAudioTrack();
+     if(keepSound&&originalAudio&&!(await check.getPrimaryAudioTrack()))
+       throw Error('Source had audio, but exported MP4 lost its audio track. Output rejected.');
+     verifiedFps=` · ${outRate.toFixed(2)} avg FPS`;
+   }
+   if(cancelRequested)throw Error('Cancelled');
+   outputBlob=blob;outputUrl=u;$('outVideo').src=u;$('outVideo').hidden=false;$('outImage').hidden=true;
+   const change=100*(blob.size/file.size-1);
+   const changeText=change>0?`larger by ${change.toFixed(1)}%`:`smaller by ${(-change).toFixed(1)}%`;
+   showResult(file.name.replace(/\.[^.]+$/,'')+'_clearsend_status_hd.mp4',
+      `${info.w} × ${info.h} · ${info.d.toFixed(2)}s${verifiedFps} · ${bytes(file.size)} → ${bytes(blob.size)} (${changeText}) · ${engineLabel}`,
+      'Encoded in frame order (not a screen recording). Check motion, skin/sky colours and audio before posting. WhatsApp may still recompress.');
+   update('Video ready: preview and compare before Status upload.',100);
+ }catch(err){URL.revokeObjectURL(u);throw err;}
+}
 async function processVideo(){
+ const isPhone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+ const max=(isPhone?90:250)*1024*1024;
+ if(file.size>max)throw Error('For this beta, please choose a file below '+(isPhone?'200':'500')+' MB.');
+ if($('videoEngine').value==='x264')return processVideoWasm();
+ return processVideoNative();
+}
+async function processVideoWasm(){
  const isPhone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
  const maxFile=(isPhone?50:120)*1024*1024;
  if(file.size>maxFile)throw new Error('Clip exceeds the '+(isPhone?'50':'120')+' MB beta safety limit on this device. Large FFmpeg.wasm jobs may run out of memory.');
@@ -185,12 +350,12 @@ async function processVideo(){
    // FFmpeg's source_fps ensures 24/25/29.97 fps clips aren't artificially raised to 30.
    if($('videoFps').value==='30')filters.push("fps=fps='min(30,source_fps)'");
    const profiles={
-     status:['-b:v','3400k','-maxrate','4400k','-bufsize','6800k'],
-     high:['-crf','19','-maxrate','6500k','-bufsize','13000k'],
-     balanced:['-crf','23','-maxrate','3600k','-bufsize','7200k'],
-     small:['-crf','27','-maxrate','2200k','-bufsize','4400k']
+     status:['-crf','20','-maxrate','3800k','-bufsize','7600k'],
+     high:['-crf','19','-maxrate','5500k','-bufsize','11000k'],
+     balanced:['-crf','23','-maxrate','2800k','-bufsize','5600k'],
+     small:['-crf','27','-maxrate','1800k','-bufsize','3600k']
    };
-   const args=['-nostdin','-i',input,'-map','0:v:0','-vf',filters.join(','),'-c:v','libx264','-preset','veryfast',...(profiles[quality]||profiles.status),'-pix_fmt','yuv420p','-g','60'];
+   const args=['-nostdin','-i',input,'-map','0:v:0','-vf',filters.join(','),'-c:v','libx264','-preset','faster',...(profiles[quality]||profiles.status),'-pix_fmt','yuv420p','-g','60','-bf','2','-profile:v','high','-color_range','tv','-colorspace','bt709','-color_primaries','bt709','-color_trc','bt709'];
    if($('keepAudio').checked)args.push('-map','0:a:0?','-c:a','aac','-b:a','128k');else args.push('-an');
    args.push('-sn','-dn','-map_metadata','-1','-map_chapters','-1','-movflags','+faststart','-y',output);
    update('Encoding full-resolution video…',18);
@@ -225,7 +390,21 @@ async function processVideo(){
    try{await f.call('delete',{path:output});}catch(e){}
  }
 }
-function showResult(name,meta,hint){$('result').style.display='block';$('outMeta').textContent=name+' · '+meta;$('resultHint').textContent=hint;$('download').onclick=()=>{if(!outputUrl)return;const a=document.createElement('a');a.href=outputUrl;a.download=name;a.click()};$('result').scrollIntoView({behavior:'smooth',block:'nearest'});}
+function showResult(name,meta,hint){
+ $('result').style.display='block';$('outMeta').textContent=name+' · '+meta;$('resultHint').textContent=hint;
+ $('download').onclick=()=>{if(!outputUrl)return;const a=document.createElement('a');a.href=outputUrl;a.download=name;a.click()};
+ const shareBtn=$('share');shareBtn.hidden=true;
+ try{
+   if(outputBlob&&navigator.canShare){
+     const sharedFile=new File([outputBlob],name,{type:outputBlob.type||'application/octet-stream'});
+     if(navigator.canShare({files:[sharedFile]})){
+       shareBtn.hidden=false;
+       shareBtn.onclick=async()=>{try{await navigator.share({files:[sharedFile],title:'ClearSend media'});}catch(e){if(e?.name!=='AbortError')update('Share failed. Use Download to save your file.',100);}};
+     }
+   }
+ }catch(e){shareBtn.hidden=true;}
+ $('result').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 selectMode('video');
 </script>
 </body></html>
