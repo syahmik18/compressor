@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>ClearSend — Status HD | Single-thread Quality Edition</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#121d2e;--panel2:#172438;--line:#29384e;--text:#edf4ff;--muted:#9aabc2;--blue:#63a8ff;--cyan:#53e0d0;--good:#6ee7b7;--warn:#ffd18a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -15%,#1c3556 0,transparent 48%),var(--bg);color:var(--text);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.shell{width:min(940px,100% - 32px);margin:0 auto;padding:34px 0 56px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:34px}.brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:-.04em;font-size:21px}.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(145deg,var(--blue),var(--cyan));display:grid;place-items:center;color:#081323;font-weight:900;font-size:20px}.local{font-size:12px;color:var(--good);border:1px solid #245b50;background:#12342f;padding:6px 10px;border-radius:99px}
+.hero{margin-bottom:24px}.eyebrow{color:var(--cyan);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}.hero h1{font-size:clamp(32px,6vw,54px);line-height:1.04;letter-spacing:-.055em;margin:12px 0}.hero h1 span{color:var(--blue)}.hero p{color:var(--muted);max-width:650px;margin:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.panel{background:linear-gradient(160deg,#152238,#101a2a);border:1px solid var(--line);border-radius:19px;padding:20px;min-width:0}.wide{grid-column:1/-1}.step{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:13px}
+.tabs{display:flex;background:#0c1626;border:1px solid var(--line);padding:4px;border-radius:12px;gap:4px;margin-bottom:16px}.tabs button{flex:1;border:0;border-radius:9px;padding:10px;background:transparent;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}.tabs button.active{background:#263b58;color:white}
+.drop{border:1.5px dashed #48617e;border-radius:15px;padding:25px 14px;text-align:center;background:#0c1727;transition:.15s}.drop.over{border-color:var(--cyan);background:#112b35}.drop strong{display:block;font-size:16px}.drop p,.hint{color:var(--muted);font-size:13px;margin:7px 0 0}.btn{border:0;border-radius:11px;padding:12px 16px;background:linear-gradient(110deg,#68aaff,#54dfd0);color:#071321;font:inherit;font-weight:800;cursor:pointer}.btn:disabled{opacity:.4;cursor:not-allowed}.btn.secondary{background:#263a54;color:var(--text);border:1px solid #3b506d}.fileline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:#0d192a;border:1px solid var(--line);border-radius:12px;margin-top:13px}.fileline span{min-width:0;overflow-wrap:anywhere;font-size:13px}.fileline small{color:var(--muted);display:block}
+.preview{width:100%;max-height:300px;object-fit:contain;background:#050a12;border-radius:12px;margin-top:14px}
+.settings{display:grid;gap:14px}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}.field select,.field input[type=range]{width:100%}.field select{background:#0b1728;border:1px solid #344862;border-radius:10px;padding:11px;color:var(--text);font:inherit}.check{display:flex;gap:9px;align-items:flex-start;color:var(--muted);font-size:13px}.check input{margin-top:5px;accent-color:var(--blue)}
+.specs{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:15px}.spec{padding:11px;background:#0c1727;border:1px solid var(--line);border-radius:11px}.spec small{display:block;color:var(--muted);font-size:11px}.spec b{font-size:14px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.progress{height:9px;background:#0a1422;border-radius:99px;overflow:hidden;border:1px solid var(--line);margin:13px 0}.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .2s}
+.status{font-size:13px;color:var(--muted);min-height:22px}.result{display:none;margin-top:15px}.result video,.result img{width:100%;max-height:390px;object-fit:contain;background:#050a12;border-radius:12px}.result .fileline{margin:12px 0 0}
+.guide{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.guide article{background:#0c1727;border:1px solid var(--line);border-radius:13px;padding:14px}.guide b{display:block;margin-bottom:5px}.guide p{color:var(--muted);font-size:13px;margin:0}
+.note{font-size:12px;color:var(--muted);margin-top:14px}.footer{color:#73849b;font-size:12px;margin-top:24px;text-align:center}
+@media(max-width:680px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.guide{grid-template-columns:1fr}.top{margin-bottom:25px}.panel{padding:16px}.specs{grid-template-columns:repeat(3,1fr)}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="shell">
+<header class="top"><div class="brand"><div class="logo">C</div>ClearSend</div><div class="local">● Private · processed on this device</div></header>
+<section class="hero"><div class="eyebrow">Media, ready to share</div><h1>Keep your moments <span>clear.</span></h1><p>Prepare photos and videos before sharing to WhatsApp. Resize and encode with sensible quality settings, then save the optimized file. No account, upload or subscription.</p></section>
+<div class="grid">
+<section class="panel">
+<div class="step">01 / Choose media</div>
+<div class="tabs"><button id="videoTab" class="active">Video</button><button id="photoTab">Photo</button></div>
+<div class="drop" id="drop"><strong>Drop a file here</strong><p>or choose a file from your device</p><div style="margin-top:15px"><button class="btn" id="choose">Choose video</button></div><input id="file" type="file" accept="video/*" hidden></div>
+<div id="fileInfo" class="fileline" hidden><span id="fileName">—<small id="fileMeta"></small></span><button class="btn secondary" id="clear" type="button">Remove</button></div>
+<video id="sourceVideo" class="preview" controls playsinline hidden></video><img id="sourceImage" class="preview" hidden alt="Selected photo preview">
+<p class="hint" id="formatHint">MP4, MOV and other browser-readable video formats. For best WhatsApp Status results, use clips around 60 seconds or shorter.</p>
+</section>
+<section class="panel">
+<div class="step">02 / Output settings</div>
+<div id="videoSettings" class="settings">
+<div class="field"><label for="videoQuality">Video quality</label><select id="videoQuality"><option value="status">Status HD · 1080p / ~3.4 Mbps · recommended</option><option value="high">High detail · larger file</option><option value="balanced">Balanced · smaller file</option><option value="small">Compact · stronger compression</option></select></div>
+<div class="field"><label for="videoFps">Frame rate</label><select id="videoFps"><option value="30">Up to 30 FPS (never increase FPS)</option><option value="source" selected>Preserve source FPS · smoothest</option></select></div>
+<div class="field"><label for="videoSize">Maximum resolution</label><select id="videoSize"><option value="1080">Up to 1080p</option><option value="720">Up to 720p · smaller file</option><option value="source">Keep source dimensions</option></select></div>
+<label class="check"><input id="keepAudio" type="checkbox" checked> Include audio · AAC 128 kbps (when present)</label>
+</div>
+<div id="photoSettings" class="settings" hidden>
+<div class="field"><label for="photoSize">Maximum image dimension</label><select id="photoSize"><option value="1920">1920 px · recommended</option><option value="2560">2560 px · extra detail</option><option value="1280">1280 px · smaller file</option><option value="original">Keep original dimensions</option></select></div>
+<div class="field"><label for="photoQuality">JPEG quality <span id="qualityLabel">90%</span></label><input id="photoQuality" type="range" min="70" max="96" value="90"></div>
+<label class="check"><input id="photoFormat" type="checkbox"> Export as WebP instead of JPEG (smaller; compatibility may vary)</label>
+</div>
+<div class="specs"><div class="spec"><small>Processing</small><b>On device</b></div><div class="spec"><small>Account</small><b>Not needed</b></div><div class="spec"><small>Cost</small><b>Free beta</b></div></div>
+<button class="btn" id="process" disabled style="width:100%;margin-top:17px">Choose a file first</button>
+<p class="note">Status HD uses H.264 around 3.4 Mbps with AAC audio as a practical starting point from one PureStatus sample, not a quality guarantee. The single-thread FFmpeg engine runs on your device without SharedArrayBuffer or canvas re-recording. The engine (~30 MB) is downloaded from a CDN when first used; your media is not uploaded. Long videos and iPhone memory limits may still prevent a conversion. Recommended: short clips under 50 MB on phones, under 120 MB on desktop. HDR-to-SDR color conversion is not yet reliable. Source GPS and camera metadata are removed from compressed exports. WhatsApp can still recompress Status videos.</p>
+</section>
+<section class="panel wide" id="workPanel" hidden>
+<div class="step">03 / Processing</div><div class="status" id="status">Getting ready…</div><div class="progress"><i id="bar"></i></div><div class="actions"><button class="btn secondary" type="button" id="cancel" hidden>Cancel conversion</button><button class="btn secondary" type="button" id="original" hidden>Download original instead</button></div>
+<div class="result" id="result"><div class="step">Optimized file</div><video id="outVideo" controls playsinline hidden></video><img id="outImage" hidden alt="Optimized photo"><div class="fileline"><span id="outMeta">—</span><button class="btn" id="download">Download</button></div><p class="hint" id="resultHint"></p></div>
+</section>
+<section class="panel wide">
+<div class="step">04 / Upload to WhatsApp</div>
+<div class="guide"><article><b>1. Save your file</b><p>Download the optimized photo or video to your phone or computer.</p></article><article><b>2. Share as media</b><p>Open WhatsApp Status or a chat and select the saved file from your gallery.</p></article><article><b>3. Avoid editing again</b><p>Share the saved video directly to Status without trimming, cropping or adding effects. WhatsApp may still recompress it.</p></article></div>
+<p class="note">WhatsApp Status does not guarantee HD delivery. Keep your best-quality original and compare the posted Status on another device. ClearSend is independent of PureStatus and WhatsApp; no video watermark is added.</p>
+</section>
+</div>
+<div class="footer">ClearSend · Single-thread quality edition · Free beta · No account<br>Video engine: <a href="https://github.com/ffmpegwasm/ffmpeg.wasm" target="_blank" rel="noopener noreferrer" style="color:#9aabc2">FFmpeg.wasm</a> (GPL-based codec core)</div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let mode='video', file=null, outputBlob=null, outputUrl=null, sourceUrl=null, busy=false;
+let engine=null, engineAssets=null, cancelRequested=false;
+let sourceInfo=null, ffmpegLog=[];
+const CORE_BASE='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+const bytes=n=> n<1024*1024 ? (n/1024).toFixed(0)+' KB':(n/(1024*1024)).toFixed(2)+' MiB';
+const errorText=e=>e instanceof Error?e.message:String(e);
+function update(t,p){$('status').textContent=t;if(Number.isFinite(p))$('bar').style.width=Math.max(0,Math.min(100,p))+'%';}
+function cleanup(){if(outputUrl)URL.revokeObjectURL(outputUrl);outputUrl=null;outputBlob=null;$('outVideo').pause();$('outVideo').removeAttribute('src');$('outVideo').load();$('outImage').removeAttribute('src');$('outVideo').hidden=true;$('outImage').hidden=true;$('result').style.display='none';$('workPanel').hidden=true;$('original').hidden=true;$('cancel').hidden=true;}
+function resetSource(){file=null;sourceInfo=null;if(sourceUrl)URL.revokeObjectURL(sourceUrl);sourceUrl=null;cleanup();$('fileInfo').hidden=true;$('sourceVideo').pause();$('sourceVideo').removeAttribute('src');$('sourceVideo').load();$('sourceVideo').hidden=true;$('sourceImage').hidden=true;$('process').disabled=true;$('process').textContent='Choose a file first';}
+function selectMode(m){if(busy)return;resetSource();mode=m;$('videoTab').classList.toggle('active',m==='video');$('photoTab').classList.toggle('active',m==='photo');$('videoSettings').hidden=m!=='video';$('photoSettings').hidden=m!=='photo';$('file').accept=m==='video'?'video/*':'image/*';$('choose').textContent='Choose '+m;$('formatHint').textContent=m==='video'?'MP4 and MOV supported when the video engine can decode them. Use short clips for Status. Keep this tab open while encoding.':'JPG, PNG, WebP and other browser-readable image formats.';}
+function selectFile(f){if(busy||!f)return;if(mode==='video'&&!(/video\//.test(f.type)||/\.(mp4|mov|m4v|webm|mkv)$/i.test(f.name))){alert('Please choose a video.');return;}if(mode==='photo'&&!f.type.startsWith('image/')){alert('Please choose a photo.');return;}resetSource();file=f;$('fileInfo').hidden=false;$('fileName').replaceChildren(document.createTextNode(f.name));const meta=document.createElement('small');meta.textContent=bytes(f.size)+' · '+(f.type||'unknown type');$('fileName').append(meta);sourceUrl=URL.createObjectURL(file);if(mode==='video'){$('sourceVideo').src=sourceUrl;$('sourceVideo').hidden=false;$('sourceVideo').onloadedmetadata=()=>{if(file!==f)return;sourceInfo={w:$('sourceVideo').videoWidth,h:$('sourceVideo').videoHeight,d:$('sourceVideo').duration};meta.textContent=bytes(f.size)+' · '+sourceInfo.w+' × '+sourceInfo.h+' · '+(Number.isFinite(sourceInfo.d)?sourceInfo.d.toFixed(1)+' sec':'duration unknown');};$('sourceImage').hidden=true;}else{$('sourceImage').src=sourceUrl;$('sourceImage').hidden=false;$('sourceVideo').hidden=true;}$('process').disabled=false;$('process').textContent=mode==='video'?'Optimize video':'Optimize photo';}
+$('videoTab').onclick=()=>selectMode('video');$('photoTab').onclick=()=>selectMode('photo');$('choose').onclick=()=>{if(busy)return;$('file').value='';$('file').click();};$('file').onchange=e=>selectFile(e.target.files[0]);$('clear').onclick=()=>{if(!busy)resetSource();};$('drop').ondragover=e=>{e.preventDefault();$('drop').classList.add('over');};$('drop').ondragleave=()=>{$('drop').classList.remove('over');};$('drop').ondrop=e=>{e.preventDefault();$('drop').classList.remove('over');selectFile(e.dataTransfer.files[0]);};$('photoQuality').oninput=e=>$('qualityLabel').textContent=e.target.value+'%';
+$('original').onclick=()=>{if(!file)return;const a=document.createElement('a');a.href=sourceUrl;a.download=file.name;a.click();};
+$('cancel').onclick=()=>{cancelRequested=true;if(engine){engine.stop();engine=null;}update('Conversion cancelled. Your original video has not been changed.',0);$('cancel').hidden=true;$('original').hidden=false;};
+$('process').onclick=async()=>{if(!file||busy)return;busy=true;cancelRequested=false;$('process').disabled=true;cleanup();$('workPanel').hidden=false;$('original').hidden=mode!=='video';$('cancel').hidden=mode!=='video';update('Preparing…',2);try{if(mode==='video')await processVideo();else await processPhoto();}catch(e){console.error('[ClearSend]',e);update(cancelRequested?'Conversion cancelled. Original video is safe.':'Could not process this file: '+errorText(e)+'. Your source file is unchanged.',0);$('original').hidden=mode!=='video';}finally{busy=false;$('process').disabled=false;$('cancel').hidden=true;}};
+async function processPhoto(){
+ let bitmap;if(typeof createImageBitmap==='function')bitmap=await createImageBitmap(file);else bitmap=await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=sourceUrl;});let w=bitmap.width||bitmap.naturalWidth,h=bitmap.height||bitmap.naturalHeight;const max=$('photoSize').value==='original'?Math.max(w,h):Number($('photoSize').value);const factor=Math.min(1,max/Math.max(w,h));w=Math.max(1,Math.round(w*factor));h=Math.max(1,Math.round(h*factor));const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(bitmap,0,0,w,h);bitmap.close?.();update('Encoding image…',70);const ext=$('photoFormat').checked?'webp':'jpg',type='image/'+(ext==='jpg'?'jpeg':'webp');outputBlob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Image export failed')),type,Number($('photoQuality').value)/100));outputUrl=URL.createObjectURL(outputBlob);$('outImage').src=outputUrl;$('outImage').hidden=false;$('outVideo').hidden=true;showResult(file.name.replace(/\.[^.]+$/,'')+'_clearsend.'+ext,`${w} × ${h} · ${bytes(file.size)} → ${bytes(outputBlob.size)}`,'Photo processed locally. GPS/EXIF tags are not copied by canvas export.');update('Photo ready to download.',100);
+}
+
+// FFmpeg single-thread worker. The complete worker is authored INSIDE this HTML,
+// so GitHub Pages does not need another local JS file or custom isolation headers.
+// Uses the official @ffmpeg/core (not core-mt). Never records rendered canvas frames.
+function makeEngine(){
+ const workerJS=`
+let ff=null;
+self.onmessage=async ev=>{
+ const {id,type,payload}=ev.data;
+ try{
+   if(type==='load'){
+     importScripts(payload.js);
+     if(typeof self.createFFmpegCore!=='function')throw Error('FFmpeg single-thread core unavailable');
+     const fragment=btoa(JSON.stringify({wasmURL:payload.wasm}));
+     ff=await self.createFFmpegCore({mainScriptUrlOrBlob:payload.js+'#'+fragment});
+     ff.setLogger(x=>self.postMessage({kind:'log',data:x}));
+     ff.setProgress(x=>self.postMessage({kind:'progress',data:x}));
+     self.postMessage({id,result:true});return;
+   }
+   if(!ff)throw Error('Video engine not loaded');
+   if(type==='write'){ff.FS.writeFile(payload.path,new Uint8Array(payload.data));self.postMessage({id,result:true});return;}
+   if(type==='exec'){ff.setTimeout(-1);ff.exec(...payload.args);const code=ff.ret;ff.reset();self.postMessage({id,result:code});return;}
+   if(type==='read'){const data=ff.FS.readFile(payload.path);self.postMessage({id,result:data},[data.buffer]);return;}
+   if(type==='delete'){try{ff.FS.unlink(payload.path)}catch(e){}self.postMessage({id,result:true});return;}
+   throw Error('Unknown worker instruction');
+ }catch(e){self.postMessage({id,error:String(e&&e.message||e)});}
+};`;
+ const blob=URL.createObjectURL(new Blob([workerJS],{type:'text/javascript'}));
+ let worker;
+ worker=new Worker(blob);
+ let sequence=0,stopped=false;const pending=new Map();
+ const failAll=msg=>{for(const p of pending.values())p.reject(new Error(msg));pending.clear();};
+ worker.onerror=e=>{failAll(e.message||'FFmpeg worker stopped unexpectedly');console.error('FFmpeg worker',e);URL.revokeObjectURL(blob);};
+ worker.onmessage=e=>{
+   const d=e.data;
+   if(d.kind==='log'){if(d.data?.message){ffmpegLog.push(d.data.message);if(ffmpegLog.length>80)ffmpegLog.shift();}return;}
+   if(d.kind==='progress'){if(typeof d.data?.progress==='number' && d.data.progress>=0 && d.data.progress<=1){update('Encoding video… '+Math.round(d.data.progress*100)+'%',18+Math.round(d.data.progress*74));}return;}
+   const p=pending.get(d.id);if(!p)return;pending.delete(d.id);if(d.error)p.reject(new Error(d.error));else p.resolve(d.result);
+ };
+ return {
+   call(type,payload={},transfer=[]){if(stopped)return Promise.reject(new Error('Worker stopped'));return new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject});try{worker.postMessage({id,type,payload},transfer)}catch(e){pending.delete(id);reject(e);}})},
+   stop(){if(stopped)return;stopped=true;failAll('Conversion cancelled');worker.terminate();URL.revokeObjectURL(blob);}
+ };
+}
+async function blobAsset(url,type){
+ const response=await fetch(url,{mode:'cors',cache:'force-cache'});
+ if(!response.ok)throw new Error('Could not download video engine ('+response.status+'). Check internet/CDN access.');
+ return URL.createObjectURL(new Blob([await response.arrayBuffer()],{type}));
+}
+async function getEngine(){
+ if(engine)return engine;
+ update('Downloading single-thread FFmpeg engine (first use ~30 MB)…',3);
+ if(!engineAssets){
+   const [js,wasm]=await Promise.all([blobAsset(CORE_BASE+'/ffmpeg-core.js','text/javascript'),blobAsset(CORE_BASE+'/ffmpeg-core.wasm','application/wasm')]);
+   engineAssets={js,wasm};
+ }
+ if(cancelRequested)throw new Error('Cancelled');
+ const candidate=makeEngine();
+ try{await candidate.call('load',engineAssets);if(cancelRequested)throw new Error('Cancelled');engine=candidate;return engine;}
+ catch(err){candidate.stop();throw new Error('Could not start single-thread FFmpeg: '+errorText(err));}
+}
+function scaledSize(inputW,inputH,option){
+ const limit=option==='source'?Infinity:(option==='720'?1280:1920);
+ const ratio=Math.min(1,limit/Math.max(inputW,inputH));
+ return {w:Math.max(2,Math.floor(inputW*ratio/2)*2),h:Math.max(2,Math.floor(inputH*ratio/2)*2)};
+}
+function videoDetails(url,timeoutMs=15000){
+ return new Promise((resolve,reject)=>{
+   const v=document.createElement('video');v.preload='metadata';v.muted=true;v.playsInline=true;
+   const timer=setTimeout(()=>done(new Error('Could not inspect exported MP4')),timeoutMs);
+   function done(err,value){clearTimeout(timer);v.removeAttribute('src');v.load();err?reject(err):resolve(value)}
+   v.onloadedmetadata=()=>done(null,{w:v.videoWidth,h:v.videoHeight,d:v.duration});
+   v.onerror=()=>done(new Error('Exported MP4 is not browser-playable'));
+   v.src=url;
+ });
+}
+async function processVideo(){
+ const isPhone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+ const maxFile=(isPhone?50:120)*1024*1024;
+ if(file.size>maxFile)throw new Error('Clip exceeds the '+(isPhone?'50':'120')+' MB beta safety limit on this device. Large FFmpeg.wasm jobs may run out of memory.');
+ if(sourceInfo && Number.isFinite(sourceInfo.d) && sourceInfo.d>180)throw new Error('For this beta, use video clips shorter than 3 minutes.');
+ const activeFile=file;
+ const f=await getEngine();
+ if(cancelRequested)throw new Error('Cancelled');
+ ffmpegLog=[];
+ const suffix=(file.name.split('.').pop()||'mp4').replace(/[^a-z0-9]/gi,'').toLowerCase()||'mp4';
+ const input='clearsend_input.'+suffix, output='clearsend_output.mp4';
+ try{
+   update('Loading source into encoder…',12);
+   const data=await activeFile.arrayBuffer();
+   await f.call('write',{path:input,data},[data]);
+   const size=$('videoSize').value, quality=$('videoQuality').value;
+   // Never upscale. 1080p means 1920x1080 OR 1080x1920, never 1080x608.
+   const limit=size==='720'?1280:1920;
+   const scale=size==='source'?'scale=trunc(iw/2)*2:trunc(ih/2)*2':`scale=w='min(iw,${limit})':h='min(ih,${limit})':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos`;
+   const filters=[scale];
+   // FFmpeg's source_fps ensures 24/25/29.97 fps clips aren't artificially raised to 30.
+   if($('videoFps').value==='30')filters.push("fps=fps='min(30,source_fps)'");
+   const profiles={
+     status:['-b:v','3400k','-maxrate','4400k','-bufsize','6800k'],
+     high:['-crf','19','-maxrate','6500k','-bufsize','13000k'],
+     balanced:['-crf','23','-maxrate','3600k','-bufsize','7200k'],
+     small:['-crf','27','-maxrate','2200k','-bufsize','4400k']
+   };
+   const args=['-nostdin','-i',input,'-map','0:v:0','-vf',filters.join(','),'-c:v','libx264','-preset','veryfast',...(profiles[quality]||profiles.status),'-pix_fmt','yuv420p','-g','60'];
+   if($('keepAudio').checked)args.push('-map','0:a:0?','-c:a','aac','-b:a','128k');else args.push('-an');
+   args.push('-sn','-dn','-map_metadata','-1','-map_chapters','-1','-movflags','+faststart','-y',output);
+   update('Encoding full-resolution video…',18);
+   const ret=await f.call('exec',{args});
+   if(cancelRequested)throw new Error('Cancelled');
+   if(ret!==0)throw new Error('FFmpeg exited '+ret+': '+ffmpegLog.slice(-5).join(' ').slice(-350));
+   update('Verifying frame dimensions…',95);
+   const encoded=await f.call('read',{path:output});
+   if(!(encoded instanceof Uint8Array)||encoded.length<2000)throw new Error('No valid MP4 was produced');
+   const tempBlob=new Blob([encoded],{type:'video/mp4'}),tempURL=URL.createObjectURL(tempBlob);
+   try{
+     const info=await videoDetails(tempURL);
+     if(!info.w||!info.h)throw new Error('Video has no visible frames');
+     if(sourceInfo?.w && sourceInfo?.h){
+       const expected=scaledSize(sourceInfo.w,sourceInfo.h,size);
+       const got=Math.min(info.w/expected.w,info.h/expected.h);
+       if(got<0.94)throw new Error(`Quality safeguard: expected approximately ${expected.w} × ${expected.h}, got ${info.w} × ${info.h}. Export rejected.`);
+       const a=sourceInfo.d,b=info.d;
+       if(Number.isFinite(a)&&Number.isFinite(b)&&a>2&&Math.abs(a-b)>Math.max(0.5,a*0.05))throw new Error(`Video duration changed unexpectedly (${a.toFixed(1)}s → ${b.toFixed(1)}s). Export rejected.`);
+     }
+     outputBlob=tempBlob;outputUrl=tempURL;
+     $('outVideo').src=outputUrl;$('outVideo').hidden=false;$('outImage').hidden=true;
+     const saved=(1-outputBlob.size/file.size)*100;
+     const change=saved>=0?`saved ${saved.toFixed(1)}%`:`grew ${Math.abs(saved).toFixed(1)}%`;
+     const note=outputBlob.size>file.size?'The result is larger than the source. Keep the original if the visual improvement is not worth the size.':'Full-resolution output verified. Look for motion stutter and detail loss before posting. WhatsApp may still recompress.';
+     showResult(activeFile.name.replace(/\.[^.]+$/,'')+'_clearsend.mp4',`${info.w} × ${info.h} · ${Number.isFinite(info.d)?info.d.toFixed(2)+' s · ':''}${bytes(activeFile.size)} → ${bytes(outputBlob.size)} (${change})`,note);
+     $('original').hidden=false;
+     update('Status HD video ready. Compare with the original.',100);
+   }catch(e){URL.revokeObjectURL(tempURL);throw e;}
+ }finally{
+   try{await f.call('delete',{path:input});}catch(e){}
+   try{await f.call('delete',{path:output});}catch(e){}
+ }
+}
+function showResult(name,meta,hint){$('result').style.display='block';$('outMeta').textContent=name+' · '+meta;$('resultHint').textContent=hint;$('download').onclick=()=>{if(!outputUrl)return;const a=document.createElement('a');a.href=outputUrl;a.download=name;a.click()};$('result').scrollIntoView({behavior:'smooth',block:'nearest'});}
+selectMode('video');
+</script>
+</body></html>
