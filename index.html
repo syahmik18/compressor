@@ -27,7 +27,7 @@
 <body>
 <main class="shell">
 <header class="top"><div class="brand"><div class="logo">C</div>ClearSend</div><div class="local">● Private · processed on this device</div></header>
-<section class="hero"><div class="eyebrow">Media, ready to share</div><h1>Keep your moments <span>clear.</span></h1><p>Prepare video frames accurately for WhatsApp Status with browser-native H.264 encoding, or improve your photos with careful resizing and subtle detail recovery. No account, media upload or subscription.</p></section>
+<section class="hero"><div class="eyebrow">Media, ready to share</div><h1>Keep your moments <span>clear.</span></h1><p>Avoid unnecessary video re-encoding and preserve fine detail when preparing WhatsApp Status, or improve your photos with careful resizing and subtle detail recovery. No account, media upload or subscription.</p></section>
 <div class="grid">
 <section class="panel">
 <div class="step">01 / Choose media</div>
@@ -40,10 +40,10 @@
 <section class="panel">
 <div class="step">02 / Output settings</div>
 <div id="videoSettings" class="settings">
-<div class="field"><label for="videoQuality">Video quality</label><select id="videoQuality"><option value="status">Status HD · up to 1080p / ~3.8 Mbps · recommended</option><option value="high">High detail · ~5.5 Mbps</option><option value="balanced">Balanced · ~2.8 Mbps</option><option value="small">Compact · ~1.8 Mbps</option></select></div>
+<div class="field"><label for="videoQuality">Video quality</label><select id="videoQuality"><option value="auto" selected>Quality Guard · preserve compatible videos (recommended)</option><option value="high">High detail · re-encode at ~9 Mbps</option><option value="status">Status size target · ~3.8 Mbps (may soften)</option><option value="balanced">Balanced · ~4.5 Mbps</option><option value="small">Compact · ~2 Mbps (more blur)</option></select></div>
 <div class="field"><label for="videoFps">Frame rate</label><select id="videoFps"><option value="30" selected>Up to 30 FPS · best for Status</option><option value="source">Preserve source FPS · for testing</option></select></div>
 <div class="field"><label for="videoSize">Maximum resolution</label><select id="videoSize"><option value="1080">Up to 1080p</option><option value="720">Up to 720p · smaller file</option><option value="source">Keep source dimensions</option></select></div>
-<div class="field"><label for="videoEngine">Video engine</label><select id="videoEngine"><option value="native" selected>WebCodecs · fast, frame-accurate (recommended)</option><option value="x264">x264 · slow, software encode (experimental)</option></select><p class="hint">Native encoding preserves timestamps and can copy AAC audio without recompression. x264 is slower and downloads a larger engine.</p></div>
+<div class="field"><label for="videoEngine">Video engine</label><select id="videoEngine"><option value="native" selected>WebCodecs · fast (quality depends on device)</option><option value="x264">x264 · detail-focused software encode (slow, experimental)</option></select><p class="hint">Quality Guard avoids re-encoding already-compatible MP4s. For actual re-encoding, x264 is usually higher-fidelity but slower and experimental in-browser. Hardware/WebCodecs quality varies by device.</p></div>
 <label class="check"><input id="keepAudio" type="checkbox" checked> Preserve audio · AAC when compatible</label>
 </div>
 <div id="photoSettings" class="settings" hidden>
@@ -53,7 +53,7 @@
 </div>
 <div class="specs"><div class="spec"><small>Processing</small><b>On device</b></div><div class="spec"><small>Account</small><b>Not needed</b></div><div class="spec"><small>Cost</small><b>Free beta</b></div></div>
 <button class="btn" id="process" disabled style="width:100%;margin-top:17px">Choose a file first</button>
-<p class="note">The new browser-native engine decodes and encodes media frames with timestamps, not a real-time screen recording. H.264 video is encoded around 3.8 Mbps at up to 1080p / 30 FPS; audio is copied when compatible. A separate x264 engine is optional. No engine can guarantee that WhatsApp won't recompress your Status. Media stays on your device; only the open-source processing library is fetched from a CDN. Use short clips first. HEVC/HDR color conversion and some iPhone file types may be unsupported. Re-encoding can reduce quality even when dimensions and bitrate look good.</p>
+<p class="note">Quality Guard checks whether MP4 video is already H.264/AAC, within the chosen dimensions and frame-rate cap. If so, it returns the original bytes unchanged—zero additional blur, but no size reduction and all source metadata remains. If conversion is required, it uses your selected video engine; encoding quality can still vary. Actual WhatsApp Status quality cannot be guaranteed. Your media remains on device; engine libraries come from a CDN. HDR/HEVC may require careful tone mapping that this beta does not provide.</p>
 </section>
 <section class="panel wide" id="workPanel" hidden>
 <div class="step">03 / Processing</div><div class="status" id="status">Getting ready…</div><div class="progress"><i id="bar"></i></div><div class="actions"><button class="btn secondary" type="button" id="cancel" hidden>Cancel conversion</button><button class="btn secondary" type="button" id="original" hidden>Download original instead</button></div>
@@ -65,7 +65,7 @@
 <p class="note">WhatsApp Status does not guarantee HD delivery. Keep your best-quality original and compare the posted Status on another device. ClearSend is independent of PureStatus and WhatsApp; no video watermark is added.</p>
 </section>
 </div>
-<div class="footer">ClearSend · Frame-accurate beta · Free · No account<br>Video engine: <a href="https://mediabunny.dev" target="_blank" rel="noopener noreferrer" style="color:#9aabc2">Mediabunny / WebCodecs</a> · Optional x264 via FFmpeg.wasm</div>
+<div class="footer">ClearSend · Quality Guard beta · Free · No account<br>Preserve compatible media; selectively re-encode · Engine: <a href="https://mediabunny.dev" target="_blank" rel="noopener noreferrer" style="color:#9aabc2">Mediabunny / WebCodecs</a> · Optional x264 via FFmpeg.wasm</div>
 </main>
 <script>
 const $ = id => document.getElementById(id);
@@ -233,7 +233,53 @@ async function getNativeLibrary(){
  }
  throw Error('Could not load the browser-native media library. Try the x264 engine, or check internet access.');
 }
-function bitrateForProfile(p){return {status:3.8e6,high:5.5e6,balanced:2.8e6,small:1.8e6}[p]||3.8e6;}
+function bitrateForProfile(p){return {status:3.8e6,high:9e6,balanced:4.5e6,small:2e6}[p]||9e6;}
+
+// Quality Guard: if the original is already Status-compatible, no re-encode is safest.
+// This is lossless file preservation, NOT a claimed compression or WhatsApp hack.
+async function processVideoQualityGuard(){
+ update('Inspecting codec, resolution, FPS and audio before deciding…',5);
+ const M=await getNativeLibrary();
+ if(cancelRequested)throw Error('Cancelled');
+ const input=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(file)});
+ if(!await input.canRead())throw Error('Cannot inspect this container. Choose an explicit encode mode if needed.');
+ const track=await input.getPrimaryVideoTrack();
+ if(!track)throw Error('Video track not found');
+ const w=await track.getDisplayWidth(),h=await track.getDisplayHeight();
+ const videoCodec=await track.getCodec();
+ const audioTrack=await input.getPrimaryAudioTrack();
+ const audioCodec=audioTrack?await audioTrack.getCodec():null;
+ let fps=0;
+ try{const r=await track.computeFrameRateMetrics();fps=r.bestGuessFrameRate||0;}catch(e){}
+ const expected=scaledSize(w,h,$('videoSize').value);
+ const sizeFits=expected.w===w&&expected.h===h;
+ const fpsFits=$('videoFps').value==='source'||(fps>0&&fps<=30.05);
+ const audioFits=(!audioTrack||audioCodec==='aac')&&$('keepAudio').checked;
+ const formatFits=/\.(mp4|m4v)$/i.test(file.name);
+ const alreadyGood=formatFits&&videoCodec==='avc'&&audioFits&&sizeFits&&fpsFits;
+ if(cancelRequested)throw Error('Cancelled');
+ if(alreadyGood){
+   // Identical source bytes: no resize, smoothing, darkening, metadata rewrite, or generation loss.
+   outputBlob=file;
+   outputUrl=URL.createObjectURL(file);
+   $('outVideo').src=outputUrl;$('outVideo').hidden=false;$('outImage').hidden=true;
+   const filename=file.name.replace(/\.[^.]+$/,'')+'_clearsend_preserved.mp4';
+   const codecNote=`H.264 / ${audioTrack?'AAC':'no audio'} · ${fps.toFixed(2)} FPS`;
+   showResult(filename,`${w} × ${h} · ${codecNote} · ${bytes(file.size)} → ${bytes(file.size)} (unchanged)`,
+      'Quality Guard: this video already meets the selected compatibility limits. ClearSend deliberately made NO changes to the image or sound. No size reduction; original metadata (including any location data) remains. WhatsApp may still recompress it.');
+   update('Already compatible — original pixels and audio preserved without encoding.',100);
+   return;
+ }
+ const reasons=[];
+ if(!formatFits||videoCodec!=='avc')reasons.push('needs H.264 MP4');
+ if(!sizeFits)reasons.push('needs resizing');
+ if(!fpsFits)reasons.push('needs FPS adjustment');
+ if(!audioFits)reasons.push('needs audio conversion/removal');
+ update('Conversion needed ('+reasons.join(', ')+'). Using selected engine with a detail-first bitrate…',7);
+ if($('videoEngine').value==='x264')return processVideoWasm();
+ return processVideoNative();
+}
+
 async function processVideoNative(){
  if(!('VideoEncoder' in window)||!('VideoDecoder' in window))
   throw Error('This browser does not expose the WebCodecs video encoder/decoder. Try the optional x264 engine.');
@@ -249,14 +295,14 @@ async function processVideoNative(){
  if(!Number.isFinite(sourceDuration)||sourceDuration<=0)throw Error('Invalid video duration.');
  if(sourceDuration>180)throw Error('For this beta, use video clips up to 3 minutes.');
  const dims=scaledSize(sw,sh,$('videoSize').value);
- const rate=bitrateForProfile($('videoQuality').value);
+ const rate=$('videoQuality').value==='auto'?Math.min(12e6,Math.max(8e6,Math.round(file.size*8/sourceDuration*1.25))):bitrateForProfile($('videoQuality').value);
  const keepSound=$('keepAudio').checked;
  let sourceFps=0;
  try{const m=await track.computeFrameRateMetrics();sourceFps=m.bestGuessFrameRate||0;}catch(e){}
  const fpsLimit=$('videoFps').value==='30' && sourceFps>30.05?30:null;
  const result=new M.Output({format:new M.Mp4OutputFormat({fastStart:'in-memory'}),target:new M.BufferTarget()});
  const videoOpts={codec:'avc',width:dims.w,height:dims.h,fit:'contain',
-  quality:new M.Quality({bitrate:rate}),keyFrameInterval:2,hardwareAcceleration:'prefer-hardware',
+  quality:new M.Quality({bitrate:rate}),keyFrameInterval:2,hardwareAcceleration:'no-preference',
   allowTransformationMetadata:false,forceTranscode:true};
  if(fpsLimit)videoOpts.frameRate=30;
  update(`Encoding frames at ${dims.w} × ${dims.h} · ~${(rate/1e6).toFixed(1)} Mbps…`,10);
@@ -316,14 +362,15 @@ async function verifyAndPublish(blob,sw,sh,sd,engineLabel,M=null,sourceFps=0,kee
    const changeText=change>0?`larger by ${change.toFixed(1)}%`:`smaller by ${(-change).toFixed(1)}%`;
    showResult(file.name.replace(/\.[^.]+$/,'')+'_clearsend_status_hd.mp4',
       `${info.w} × ${info.h} · ${info.d.toFixed(2)}s${verifiedFps} · ${bytes(file.size)} → ${bytes(blob.size)} (${changeText}) · ${engineLabel}`,
-      'Encoded in frame order (not a screen recording). Check motion, skin/sky colours and audio before posting. WhatsApp may still recompress.');
+      blob.size>file.size*.94?'Warning: re-encoding saved less than 6% and may look softer. Compare with original before sharing; for similar-sized MP4s, Quality Guard usually avoids this extra encode.':'Encoded in frame order (not a screen recording). Compare edge details, dark scenes and audio. WhatsApp may still recompress.');
    update('Video ready: preview and compare before Status upload.',100);
  }catch(err){URL.revokeObjectURL(u);throw err;}
 }
 async function processVideo(){
  const isPhone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
  const max=(isPhone?90:250)*1024*1024;
- if(file.size>max)throw Error('For this beta, please choose a file below '+(isPhone?'200':'500')+' MB.');
+ if(file.size>max)throw Error('For this beta, please choose a file below '+(isPhone?'90':'250')+' MB.');
+ if($('videoQuality').value==='auto')return processVideoQualityGuard();
  if($('videoEngine').value==='x264')return processVideoWasm();
  return processVideoNative();
 }
@@ -350,12 +397,14 @@ async function processVideoWasm(){
    // FFmpeg's source_fps ensures 24/25/29.97 fps clips aren't artificially raised to 30.
    if($('videoFps').value==='30')filters.push("fps=fps='min(30,source_fps)'");
    const profiles={
-     status:['-crf','20','-maxrate','3800k','-bufsize','7600k'],
-     high:['-crf','19','-maxrate','5500k','-bufsize','11000k'],
-     balanced:['-crf','23','-maxrate','2800k','-bufsize','5600k'],
-     small:['-crf','27','-maxrate','1800k','-bufsize','3600k']
+     auto:['-crf','17'],
+     status:['-crf','20','-maxrate','4200k','-bufsize','8400k'],
+     high:['-crf','17'],
+     balanced:['-crf','21','-maxrate','5000k','-bufsize','10000k'],
+     small:['-crf','26','-maxrate','2000k','-bufsize','4000k']
    };
-   const args=['-nostdin','-i',input,'-map','0:v:0','-vf',filters.join(','),'-c:v','libx264','-preset','faster',...(profiles[quality]||profiles.status),'-pix_fmt','yuv420p','-g','60','-bf','2','-profile:v','high','-color_range','tv','-colorspace','bt709','-color_primaries','bt709','-color_trc','bt709'];
+   // Avoid pointless resizing when keeping the source dimensions.
+   const args=['-nostdin','-i',input,'-map','0:v:0','-vf',filters.join(','),'-c:v','libx264','-preset',(quality==='high'||quality==='auto')?'slow':'medium',...(profiles[quality]||profiles.auto),'-pix_fmt','yuv420p','-g','60','-bf','2','-profile:v','high'];
    if($('keepAudio').checked)args.push('-map','0:a:0?','-c:a','aac','-b:a','128k');else args.push('-an');
    args.push('-sn','-dn','-map_metadata','-1','-map_chapters','-1','-movflags','+faststart','-y',output);
    update('Encoding full-resolution video…',18);
