@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101827">
-<title>ClearSend — Frame-Accurate Status HD</title>
+<title>ClearSend — HDR-Aware Status HD</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#121d2e;--panel2:#172438;--line:#29384e;--text:#edf4ff;--muted:#9aabc2;--blue:#63a8ff;--cyan:#53e0d0;--good:#6ee7b7;--warn:#ffd18a}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -15%,#1c3556 0,transparent 48%),var(--bg);color:var(--text);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -40,9 +40,10 @@
 <section class="panel">
 <div class="step">02 / Output settings</div>
 <div id="videoSettings" class="settings">
-<div class="field"><label for="videoQuality">Video quality</label><select id="videoQuality"><option value="auto" selected>Quality Guard · preserve compatible videos (recommended)</option><option value="high">High detail · re-encode at ~9 Mbps</option><option value="status">Status size target · ~3.8 Mbps (may soften)</option><option value="balanced">Balanced · ~4.5 Mbps</option><option value="small">Compact · ~2 Mbps (more blur)</option></select></div>
+<div class="field"><label for="videoQuality">Video quality</label><select id="videoQuality"><option value="balanced" selected>Balanced · up to 4.5 Mbps · smart 10 MB target</option><option value="auto">Quality Guard · preserve compatible videos unchanged</option><option value="high">High detail · re-encode at ~9 Mbps</option><option value="status">Status size target · up to 3.8 Mbps</option><option value="small">Compact · up to 2 Mbps (may soften)</option></select><p class="hint">Balanced targets under 10 MB for short clips without exceeding its normal bitrate. Longer videos may need more than 10 MB to avoid excessive blur; size cannot be guaranteed by browser hardware encoders.</p></div>
 <div class="field"><label for="videoFps">Frame rate</label><select id="videoFps"><option value="30" selected>Up to 30 FPS · best for Status</option><option value="source">Preserve source FPS · for testing</option></select></div>
 <div class="field"><label for="videoSize">Maximum resolution</label><select id="videoSize"><option value="1080">Up to 1080p</option><option value="720">Up to 720p · smaller file</option><option value="source">Keep source dimensions</option></select></div>
+<div class="field"><label for="hdrMode">iPhone HDR / Cinematic color</label><select id="hdrMode"><option value="sdr" selected>Convert HDR to SDR/Rec.709 for Status (experimental)</option><option value="preserve">Preserve original HDR file (no compression)</option></select><p class="hint">Detects HLG/PQ/Dolby Vision color metadata where available. SDR conversion uses frame-by-frame color-managed rendering, not real-time screen recording. Browser tone mapping can vary; compare colors before sharing. Never assume HDR is ordinary SDR.</p></div>
 <div class="field"><label for="videoEngine">Video engine</label><select id="videoEngine"><option value="native" selected>WebCodecs · fast (quality depends on device)</option><option value="x264">x264 · detail-focused software encode (slow, experimental)</option></select><p class="hint">Quality Guard avoids re-encoding already-compatible MP4s. For actual re-encoding, x264 is usually higher-fidelity but slower and experimental in-browser. Hardware/WebCodecs quality varies by device.</p></div>
 <label class="check"><input id="keepAudio" type="checkbox" checked> Preserve audio · AAC when compatible</label>
 </div>
@@ -53,7 +54,7 @@
 </div>
 <div class="specs"><div class="spec"><small>Processing</small><b>On device</b></div><div class="spec"><small>Account</small><b>Not needed</b></div><div class="spec"><small>Cost</small><b>Free beta</b></div></div>
 <button class="btn" id="process" disabled style="width:100%;margin-top:17px">Choose a file first</button>
-<p class="note">Quality Guard checks whether MP4 video is already H.264/AAC, within the chosen dimensions and frame-rate cap. If so, it returns the original bytes unchanged—zero additional blur, but no size reduction and all source metadata remains. If conversion is required, it uses your selected video engine; encoding quality can still vary. Actual WhatsApp Status quality cannot be guaranteed. Your media remains on device; engine libraries come from a CDN. HDR/HEVC may require careful tone mapping that this beta does not provide.</p>
+<p class="note">HDR-aware beta: ClearSend identifies HDR metadata and uses an experimental HDR-to-SDR rendering step on the WebCodecs engine when selected; the color result depends on your browser. Select Preserve HDR if colors look wrong. Quality Guard returns compatible original files byte-for-byte. No method can guarantee identical colors or WhatsApp Status quality, and the ~10 MB target may be missed. Processing stays on your device; engine code loads from a CDN.</p>
 </section>
 <section class="panel wide" id="workPanel" hidden>
 <div class="step">03 / Processing</div><div class="status" id="status">Getting ready…</div><div class="progress"><i id="bar"></i></div><div class="actions"><button class="btn secondary" type="button" id="cancel" hidden>Cancel conversion</button><button class="btn secondary" type="button" id="original" hidden>Download original instead</button></div>
@@ -234,6 +235,27 @@ async function getNativeLibrary(){
  throw Error('Could not load the browser-native media library. Try the x264 engine, or check internet access.');
 }
 function bitrateForProfile(p){return {status:3.8e6,high:9e6,balanced:4.5e6,small:2e6}[p]||9e6;}
+// Bitrate is a target, not a size guarantee. For very long files avoid crushing
+// the picture merely to get below 10 MB: preserve detail and show a size warning.
+function chooseBitrate(profile,duration,preserveAudio){
+ const base=profile==='auto'?9e6:bitrateForProfile(profile);
+ if(!['status','balanced'].includes(profile)||!Number.isFinite(duration)||duration<=0)return base;
+ const payloadBits=9_250_000*8;
+ const budget=(payloadBits/Math.max(.5,duration))-(preserveAudio?160_000:0);
+ return Math.round(Math.max(2_400_000,Math.min(base,budget*.97)));
+}
+async function isHdrVideo(track){
+ try{return !!(await track.hasHighDynamicRange());}catch(e){
+  try{const cs=await track.getColorSpace();return cs?.transfer==='hlg'||cs?.transfer==='pq'||cs?.primaries==='bt2020';}catch(_){return false;}
+ }
+}
+function publishOriginal(reason){
+ outputBlob=file;outputUrl=URL.createObjectURL(file);
+ $('outVideo').src=outputUrl;$('outVideo').hidden=false;$('outImage').hidden=true;
+ showResult(file.name,`${bytes(file.size)} unchanged`,reason);
+ update('Original file preserved with no additional blur or generation loss.',100);
+}
+
 
 // Quality Guard: if the original is already Status-compatible, no re-encode is safest.
 // This is lossless file preservation, NOT a claimed compression or WhatsApp hack.
@@ -251,12 +273,17 @@ async function processVideoQualityGuard(){
  const audioCodec=audioTrack?await audioTrack.getCodec():null;
  let fps=0;
  try{const r=await track.computeFrameRateMetrics();fps=r.bestGuessFrameRate||0;}catch(e){}
+ const hdr=await isHdrVideo(track);
+ if(hdr&&$('hdrMode').value==='preserve'){
+  publishOriginal('HDR source detected. Original file preserved without transcoding because you chose Preserve HDR; it may exceed 10 MB and WhatsApp may still process it.');
+  return;
+ }
  const expected=scaledSize(w,h,$('videoSize').value);
  const sizeFits=expected.w===w&&expected.h===h;
  const fpsFits=$('videoFps').value==='source'||(fps>0&&fps<=30.05);
  const audioFits=(!audioTrack||audioCodec==='aac')&&$('keepAudio').checked;
  const formatFits=/\.(mp4|m4v)$/i.test(file.name);
- const alreadyGood=formatFits&&videoCodec==='avc'&&audioFits&&sizeFits&&fpsFits;
+ const alreadyGood=!hdr&&formatFits&&videoCodec==='avc'&&audioFits&&sizeFits&&fpsFits;
  if(cancelRequested)throw Error('Cancelled');
  if(alreadyGood){
    // Identical source bytes: no resize, smoothing, darkening, metadata rewrite, or generation loss.
@@ -275,6 +302,7 @@ async function processVideoQualityGuard(){
  if(!sizeFits)reasons.push('needs resizing');
  if(!fpsFits)reasons.push('needs FPS adjustment');
  if(!audioFits)reasons.push('needs audio conversion/removal');
+ if(hdr)reasons.push('needs HDR-to-SDR color conversion');
  update('Conversion needed ('+reasons.join(', ')+'). Using selected engine with a detail-first bitrate…',7);
  if($('videoEngine').value==='x264')return processVideoWasm();
  return processVideoNative();
@@ -290,13 +318,18 @@ async function processVideoNative(){
  const track=await input.getPrimaryVideoTrack();
  if(!track)throw Error('The file has no usable video track.');
  if(!(await track.canDecode()))throw Error('Your browser cannot decode this video codec (often unsupported HEVC/HDR).');
+ const hdr=await isHdrVideo(track);
+ if(hdr && $('hdrMode').value==='preserve'){
+  publishOriginal('HDR detected. Original file preserved exactly as requested. It may exceed 10 MB.');
+  return;
+ }
  const sw=await track.getDisplayWidth(),sh=await track.getDisplayHeight();
  const sourceDuration=await input.computeDuration();
  if(!Number.isFinite(sourceDuration)||sourceDuration<=0)throw Error('Invalid video duration.');
  if(sourceDuration>180)throw Error('For this beta, use video clips up to 3 minutes.');
  const dims=scaledSize(sw,sh,$('videoSize').value);
- const rate=$('videoQuality').value==='auto'?Math.min(12e6,Math.max(8e6,Math.round(file.size*8/sourceDuration*1.25))):bitrateForProfile($('videoQuality').value);
  const keepSound=$('keepAudio').checked;
+ const rate=chooseBitrate($('videoQuality').value,sourceDuration,keepSound);
  let sourceFps=0;
  try{const m=await track.computeFrameRateMetrics();sourceFps=m.bestGuessFrameRate||0;}catch(e){}
  const fpsLimit=$('videoFps').value==='30' && sourceFps>30.05?30:null;
@@ -305,7 +338,23 @@ async function processVideoNative(){
   quality:new M.Quality({bitrate:rate}),keyFrameInterval:2,hardwareAcceleration:'no-preference',
   allowTransformationMetadata:false,forceTranscode:true};
  if(fpsLimit)videoOpts.frameRate=30;
- update(`Encoding frames at ${dims.w} × ${dims.h} · ~${(rate/1e6).toFixed(1)} Mbps…`,10);
+ if(hdr){
+  // Offline, per-frame conversion; NOT HTMLVideoElement playback recording.
+  // WebCodecs rendering converts HDR video frames to an sRGB canvas surface.
+  // Browser-specific HDR tone mapping means this is explicitly experimental.
+  const canvas=document.createElement('canvas');
+  canvas.width=dims.w;canvas.height=dims.h;
+  const ctx=canvas.getContext('2d',{alpha:false,colorSpace:'srgb'});
+  if(!ctx)throw Error('Could not create SDR color-processing canvas.');
+  videoOpts.process=sample=>{
+   ctx.fillStyle='#000';ctx.fillRect(0,0,dims.w,dims.h);
+   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+   sample.draw(ctx,0,0,dims.w,dims.h);
+   return new M.VideoSample(canvas,{timestamp:sample.timestamp,duration:sample.duration});
+  };
+ }
+
+ update(`${hdr?'Converting HDR to SDR (experimental)':'Encoding SDR'} at ${dims.w} × ${dims.h} · target ~${(rate/1e6).toFixed(2)} Mbps…`,10);
  const options={input,output:result,tracks:'primary',video:videoOpts,
   audio:keepSound?{codec:'aac'}:{discard:true},tags:{}};
  const conversion=await M.Conversion.init(options);
@@ -325,10 +374,10 @@ async function processVideoNative(){
    const buffer=result.target.buffer;
    if(!buffer||buffer.byteLength<2000)throw Error('Native encoder produced no MP4 output.');
    const blob=new Blob([buffer],{type:'video/mp4'});
-   await verifyAndPublish(blob,sw,sh,sourceDuration,'WebCodecs H.264',M,sourceFps,keepSound,input);
+   await verifyAndPublish(blob,sw,sh,sourceDuration,hdr?'WebCodecs · HDR→SDR experimental':'WebCodecs H.264',M,sourceFps,keepSound,input,hdr);
  }finally{nativeConversion=null;}
 }
-async function verifyAndPublish(blob,sw,sh,sd,engineLabel,M=null,sourceFps=0,keepSound=true,sourceInput=null){
+async function verifyAndPublish(blob,sw,sh,sd,engineLabel,M=null,sourceFps=0,keepSound=true,sourceInput=null,expectSdr=false){
  update('Checking file size, dimensions, duration and playback…',94);
  const u=URL.createObjectURL(blob);
  try{
@@ -345,6 +394,8 @@ async function verifyAndPublish(blob,sw,sh,sd,engineLabel,M=null,sourceFps=0,kee
      const check=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(blob)});
      const outTrack=await check.getPrimaryVideoTrack();
      if(!outTrack)throw Error('Encoded file has no video track.');
+     if(expectSdr && await isHdrVideo(outTrack))
+       throw Error('HDR safety check: output still advertises HDR/BT.2020 instead of SDR. Export rejected to avoid incorrect colors. Choose Preserve HDR or try a different device.');
      const outStats=await outTrack.computePacketStats();
      const outRate=outStats.averagePacketRate;
      let expected=sourceFps;
@@ -362,7 +413,9 @@ async function verifyAndPublish(blob,sw,sh,sd,engineLabel,M=null,sourceFps=0,kee
    const changeText=change>0?`larger by ${change.toFixed(1)}%`:`smaller by ${(-change).toFixed(1)}%`;
    showResult(file.name.replace(/\.[^.]+$/,'')+'_clearsend_status_hd.mp4',
       `${info.w} × ${info.h} · ${info.d.toFixed(2)}s${verifiedFps} · ${bytes(file.size)} → ${bytes(blob.size)} (${changeText}) · ${engineLabel}`,
-      blob.size>file.size*.94?'Warning: re-encoding saved less than 6% and may look softer. Compare with original before sharing; for similar-sized MP4s, Quality Guard usually avoids this extra encode.':'Encoded in frame order (not a screen recording). Compare edge details, dark scenes and audio. WhatsApp may still recompress.');
+      (expectSdr?'HDR was rendered to SDR in the browser. Carefully compare colors, shadow detail, and motion against your original before posting. ':'')+
+      (blob.size>10_000_000?'Output exceeds the preferred 10 MB target; lowering bitrate further could make the picture blurry. ':'')+
+      (blob.size>file.size*.94?'Re-encoding saved less than 6% and may look softer; Quality Guard is often safer.':'Frame-by-frame output (not screen recording); WhatsApp may still recompress.'));
    update('Video ready: preview and compare before Status upload.',100);
  }catch(err){URL.revokeObjectURL(u);throw err;}
 }
@@ -375,6 +428,15 @@ async function processVideo(){
  return processVideoNative();
 }
 async function processVideoWasm(){
+ // This lightweight wasm build has no verified HDR tone-mapping filter chain.
+ // Never silently treat HDR input as ordinary SDR.
+ const M=await getNativeLibrary();
+ const check=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(file)});
+ const vt=await check.getPrimaryVideoTrack();
+ if(vt&&await isHdrVideo(vt)){
+   if($('hdrMode').value==='preserve'){publishOriginal('HDR source preserved as requested; x264 conversion skipped.');return;}
+   throw Error('HDR color conversion requires the WebCodecs engine in this single-file beta. Choose WebCodecs and HDR-to-SDR, or preserve the original.');
+ }
  const isPhone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
  const maxFile=(isPhone?50:120)*1024*1024;
  if(file.size>maxFile)throw new Error('Clip exceeds the '+(isPhone?'50':'120')+' MB beta safety limit on this device. Large FFmpeg.wasm jobs may run out of memory.');
@@ -404,7 +466,7 @@ async function processVideoWasm(){
      small:['-crf','26','-maxrate','2000k','-bufsize','4000k']
    };
    // Avoid pointless resizing when keeping the source dimensions.
-   const args=['-nostdin','-i',input,'-map','0:v:0','-vf',filters.join(','),'-c:v','libx264','-preset',(quality==='high'||quality==='auto')?'slow':'medium',...(profiles[quality]||profiles.auto),'-pix_fmt','yuv420p','-g','60','-bf','2','-profile:v','high'];
+   const args=['-nostdin','-i',input,'-map','0:v:0','-vf',filters.join(','),'-c:v','libx264','-preset',(quality==='high'||quality==='auto')?'slow':'medium',...(profiles[quality]||profiles.auto),'-pix_fmt','yuv420p','-colorspace','bt709','-color_primaries','bt709','-color_trc','bt709','-g','60','-bf','2','-profile:v','high'];
    if($('keepAudio').checked)args.push('-map','0:a:0?','-c:a','aac','-b:a','128k');else args.push('-an');
    args.push('-sn','-dn','-map_metadata','-1','-map_chapters','-1','-movflags','+faststart','-y',output);
    update('Encoding full-resolution video…',18);
