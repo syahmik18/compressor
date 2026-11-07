@@ -68,454 +68,191 @@
 </div>
 <div class="footer">ClearSend · Quality Guard beta · Free · No account<br>Preserve compatible media; selectively re-encode · Engine: <a href="https://mediabunny.dev" target="_blank" rel="noopener noreferrer" style="color:#9aabc2">Mediabunny / WebCodecs</a> · Optional x264 via FFmpeg.wasm</div>
 </main>
-<script>
-const $ = id => document.getElementById(id);
-let mode='video', file=null, outputBlob=null, outputUrl=null, sourceUrl=null, busy=false;
-let engine=null, engineAssets=null, cancelRequested=false, nativeConversion=null, nativeLibrary=null;
-let sourceInfo=null, ffmpegLog=[];
-const CORE_BASE='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
-const bytes=n=> n<1024*1024 ? (n/1024).toFixed(0)+' KB':(n/(1024*1024)).toFixed(2)+' MiB';
-const errorText=e=>e instanceof Error?e.message:String(e);
-function update(t,p){$('status').textContent=t;if(Number.isFinite(p))$('bar').style.width=Math.max(0,Math.min(100,p))+'%';}
-function cleanup(){if(outputUrl)URL.revokeObjectURL(outputUrl);outputUrl=null;outputBlob=null;$('outVideo').pause();$('outVideo').removeAttribute('src');$('outVideo').load();$('outImage').removeAttribute('src');$('outVideo').hidden=true;$('outImage').hidden=true;$('result').style.display='none';$('share').hidden=true;$('workPanel').hidden=true;$('original').hidden=true;$('cancel').hidden=true;}
-function resetSource(){file=null;sourceInfo=null;if(sourceUrl)URL.revokeObjectURL(sourceUrl);sourceUrl=null;cleanup();$('fileInfo').hidden=true;$('sourceVideo').pause();$('sourceVideo').removeAttribute('src');$('sourceVideo').load();$('sourceVideo').hidden=true;$('sourceImage').hidden=true;$('process').disabled=true;$('process').textContent='Choose a file first';}
-function selectMode(m){if(busy)return;resetSource();mode=m;$('videoTab').classList.toggle('active',m==='video');$('photoTab').classList.toggle('active',m==='photo');$('videoSettings').hidden=m!=='video';$('photoSettings').hidden=m!=='photo';$('file').accept=m==='video'?'video/*':'image/*';$('choose').textContent='Choose '+m;$('formatHint').textContent=m==='video'?'MP4 and MOV supported when the video engine can decode them. Use short clips for Status. Keep this tab open while encoding.':'JPG, PNG, WebP and other browser-readable image formats.';}
-function selectFile(f){if(busy||!f)return;if(mode==='video'&&!(/video\//.test(f.type)||/\.(mp4|mov|m4v|webm|mkv)$/i.test(f.name))){alert('Please choose a video.');return;}if(mode==='photo'&&!f.type.startsWith('image/')){alert('Please choose a photo.');return;}resetSource();file=f;$('fileInfo').hidden=false;$('fileName').replaceChildren(document.createTextNode(f.name));const meta=document.createElement('small');meta.textContent=bytes(f.size)+' · '+(f.type||'unknown type');$('fileName').append(meta);sourceUrl=URL.createObjectURL(file);if(mode==='video'){$('sourceVideo').src=sourceUrl;$('sourceVideo').hidden=false;$('sourceVideo').onloadedmetadata=()=>{if(file!==f)return;sourceInfo={w:$('sourceVideo').videoWidth,h:$('sourceVideo').videoHeight,d:$('sourceVideo').duration};meta.textContent=bytes(f.size)+' · '+sourceInfo.w+' × '+sourceInfo.h+' · '+(Number.isFinite(sourceInfo.d)?sourceInfo.d.toFixed(1)+' sec':'duration unknown');};$('sourceImage').hidden=true;}else{$('sourceImage').src=sourceUrl;$('sourceImage').hidden=false;$('sourceVideo').hidden=true;}$('process').disabled=false;$('process').textContent=mode==='video'?'Optimize video':'Optimize photo';}
-$('videoTab').onclick=()=>selectMode('video');$('photoTab').onclick=()=>selectMode('photo');$('choose').onclick=()=>{if(busy)return;$('file').value='';$('file').click();};$('file').onchange=e=>selectFile(e.target.files[0]);$('clear').onclick=()=>{if(!busy)resetSource();};$('drop').ondragover=e=>{e.preventDefault();$('drop').classList.add('over');};$('drop').ondragleave=()=>{$('drop').classList.remove('over');};$('drop').ondrop=e=>{e.preventDefault();$('drop').classList.remove('over');selectFile(e.dataTransfer.files[0]);};$('photoQuality').oninput=e=>$('qualityLabel').textContent=e.target.value+'%';
-$('original').onclick=()=>{if(!file)return;const a=document.createElement('a');a.href=sourceUrl;a.download=file.name;a.click();};
-$('cancel').onclick=()=>{cancelRequested=true;if(nativeConversion){nativeConversion.cancel().catch(()=>{});}if(engine){engine.stop();engine=null;}update('Conversion cancelled. Your original video has not been changed.',0);$('cancel').hidden=true;$('original').hidden=false;};
-$('process').onclick=async()=>{if(!file||busy)return;busy=true;cancelRequested=false;$('process').disabled=true;cleanup();$('workPanel').hidden=false;$('original').hidden=mode!=='video';$('cancel').hidden=mode!=='video';update('Preparing…',2);try{if(mode==='video')await processVideo();else await processPhoto();}catch(e){console.error('[ClearSend]',e);update(cancelRequested?'Conversion cancelled. Original video is safe.':'Could not process this file: '+errorText(e)+'. Your source file is unchanged.',0);$('original').hidden=mode!=='video';}finally{busy=false;$('process').disabled=false;$('cancel').hidden=true;}};
-// Downscale progressively on very large photos, retaining edges before a very gentle unsharp pass.
-async function processPhoto(){
- const f=file;
- update('Reading original photo…',12);
- let bitmap;
- if(typeof createImageBitmap==='function') bitmap=await createImageBitmap(f,{imageOrientation:'from-image'});
- else bitmap=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(Error('Could not decode image'));im.src=sourceUrl;});
- const naturalW=bitmap.width||bitmap.naturalWidth,naturalH=bitmap.height||bitmap.naturalHeight;
- if(naturalW*naturalH>80e6)throw Error('This image is too large for browser processing.');
- const limit=$('photoSize').value==='original'?Math.max(naturalW,naturalH):Number($('photoSize').value);
- const factor=Math.min(1,limit/Math.max(naturalW,naturalH));
- const w=Math.max(1,Math.round(naturalW*factor)),h=Math.max(1,Math.round(naturalH*factor));
- let input=bitmap,iw=naturalW,ih=naturalH;
- // Avoid abrupt 4K-to-1080p downscaling on engines with weaker resamplers.
- while(Math.max(iw/w,ih/h)>2.1){
-   const next=document.createElement('canvas'); next.width=Math.max(w,Math.round(iw/2));next.height=Math.max(h,Math.round(ih/2));
-   const nx=next.getContext('2d',{alpha:false,willReadFrequently:false});nx.imageSmoothingEnabled=true;nx.imageSmoothingQuality='high';nx.drawImage(input,0,0,next.width,next.height);
-   iw=next.width;ih=next.height;input=next;
- }
- const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
- const ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:true});
- ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(input,0,0,w,h);
- bitmap.close?.();
- if($('photoEnhance').checked && w*h<=13e6){
-   update('Restoring fine details…',50);
-   const softened=document.createElement('canvas');softened.width=w;softened.height=h;
-   const bx=softened.getContext('2d',{willReadFrequently:true});bx.filter='blur(0.85px)';bx.drawImage(canvas,0,0);
-   const orig=ctx.getImageData(0,0,w,h),blur=bx.getImageData(0,0,w,h);
-   const a=orig.data,b=blur.data;
-   const strength=0.22;
-   for(let i=0;i<a.length;i+=4){
-     for(let ch=0;ch<3;ch++){
-       const delta=a[i+ch]-b[i+ch];
-       // Avoid making halo artifacts around sharp edges.
-       a[i+ch]=Math.max(0,Math.min(255,a[i+ch]+strength*Math.max(-28,Math.min(28,delta))));
-     }
-   }
-   ctx.putImageData(orig,0,0);
- }
- if(cancelRequested)throw Error('Cancelled');
- update('Encoding high-quality photo…',75);
- const ext=$('photoFormat').checked?'webp':'jpg',type=ext==='jpg'?'image/jpeg':'image/webp';
- const quality=Number($('photoQuality').value)/100;
- const blob=await new Promise((resolve,reject)=>canvas.toBlob(v=>v?resolve(v):reject(Error('Photo export failed')),type,quality));
- if(cancelRequested)throw Error('Cancelled');
- outputBlob=blob;outputUrl=URL.createObjectURL(blob);$('outImage').src=outputUrl;$('outImage').hidden=false;$('outVideo').hidden=true;
- showResult(f.name.replace(/\.[^.]+$/,'')+'_clearsend.'+ext,`${w} × ${h} · ${bytes(f.size)} → ${bytes(blob.size)}`,
-   'High-quality resize'+($('photoEnhance').checked?' + subtle detail recovery':'')+'. Photo saved locally; source GPS/EXIF not copied.');
- update('Photo ready.',100);
-}
+ <script>
+// ClearSend: direct HDR-to-SDR x264 update.
+$('videoEngine').value='x264';
+$('videoQuality').value='status';
+$('videoSize').value='1080';
+$('videoFps').value='30';
+$('hdrMode').value='sdr';
 
-// FFmpeg single-thread worker. The complete worker is authored INSIDE this HTML,
-// so GitHub Pages does not need another local JS file or custom isolation headers.
-// Uses the official @ffmpeg/core (not core-mt). Never records rendered canvas frames.
-function makeEngine(){
- const workerJS=`
-let ff=null;
-self.onmessage=async ev=>{
- const {id,type,payload}=ev.data;
- try{
-   if(type==='load'){
-     importScripts(payload.js);
-     if(typeof self.createFFmpegCore!=='function')throw Error('FFmpeg single-thread core unavailable');
-     const fragment=btoa(JSON.stringify({wasmURL:payload.wasm}));
-     ff=await self.createFFmpegCore({mainScriptUrlOrBlob:payload.js+'#'+fragment});
-     ff.setLogger(x=>self.postMessage({kind:'log',data:x}));
-     ff.setProgress(x=>self.postMessage({kind:'progress',data:x}));
-     self.postMessage({id,result:true});return;
-   }
-   if(!ff)throw Error('Video engine not loaded');
-   if(type==='write'){ff.FS.writeFile(payload.path,new Uint8Array(payload.data));self.postMessage({id,result:true});return;}
-   if(type==='exec'){ff.setTimeout(-1);ff.exec(...payload.args);const code=ff.ret;ff.reset();self.postMessage({id,result:code});return;}
-   if(type==='read'){const data=ff.FS.readFile(payload.path);self.postMessage({id,result:data},[data.buffer]);return;}
-   if(type==='delete'){try{ff.FS.unlink(payload.path)}catch(e){}self.postMessage({id,result:true});return;}
-   throw Error('Unknown worker instruction');
- }catch(e){self.postMessage({id,error:String(e&&e.message||e)});}
-};`;
- const blob=URL.createObjectURL(new Blob([workerJS],{type:'text/javascript'}));
- let worker;
- worker=new Worker(blob);
- let sequence=0,stopped=false;const pending=new Map();
- const failAll=msg=>{for(const p of pending.values())p.reject(new Error(msg));pending.clear();};
- worker.onerror=e=>{failAll(e.message||'FFmpeg worker stopped unexpectedly');console.error('FFmpeg worker',e);URL.revokeObjectURL(blob);};
- worker.onmessage=e=>{
-   const d=e.data;
-   if(d.kind==='log'){if(d.data?.message){ffmpegLog.push(d.data.message);if(ffmpegLog.length>80)ffmpegLog.shift();}return;}
-   if(d.kind==='progress'){if(typeof d.data?.progress==='number' && d.data.progress>=0 && d.data.progress<=1){update('Encoding video… '+Math.round(d.data.progress*100)+'%',18+Math.round(d.data.progress*74));}return;}
-   const p=pending.get(d.id);if(!p)return;pending.delete(d.id);if(d.error)p.reject(new Error(d.error));else p.resolve(d.result);
- };
- return {
-   call(type,payload={},transfer=[]){if(stopped)return Promise.reject(new Error('Worker stopped'));return new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject});try{worker.postMessage({id,type,payload},transfer)}catch(e){pending.delete(id);reject(e);}})},
-   stop(){if(stopped)return;stopped=true;failAll('Conversion cancelled');worker.terminate();URL.revokeObjectURL(blob);}
- };
-}
-async function blobAsset(url,type){
- const response=await fetch(url,{mode:'cors',cache:'force-cache'});
- if(!response.ok)throw new Error('Could not download video engine ('+response.status+'). Check internet/CDN access.');
- return URL.createObjectURL(new Blob([await response.arrayBuffer()],{type}));
-}
-async function getEngine(){
- if(engine)return engine;
- update('Downloading single-thread FFmpeg engine (first use ~30 MB)…',3);
- if(!engineAssets){
-   const [js,wasm]=await Promise.all([blobAsset(CORE_BASE+'/ffmpeg-core.js','text/javascript'),blobAsset(CORE_BASE+'/ffmpeg-core.wasm','application/wasm')]);
-   engineAssets={js,wasm};
- }
- if(cancelRequested)throw new Error('Cancelled');
- const candidate=makeEngine();
- try{await candidate.call('load',engineAssets);if(cancelRequested)throw new Error('Cancelled');engine=candidate;return engine;}
- catch(err){candidate.stop();throw new Error('Could not start single-thread FFmpeg: '+errorText(err));}
-}
-function scaledSize(inputW,inputH,option){
- const limit=option==='source'?Infinity:(option==='720'?1280:1920);
- const ratio=Math.min(1,limit/Math.max(inputW,inputH));
- return {w:Math.max(2,Math.floor(inputW*ratio/2)*2),h:Math.max(2,Math.floor(inputH*ratio/2)*2)};
-}
-function videoDetails(url,timeoutMs=15000){
- return new Promise((resolve,reject)=>{
-   const v=document.createElement('video');v.preload='metadata';v.muted=true;v.playsInline=true;
-   const timer=setTimeout(()=>done(new Error('Could not inspect exported MP4')),timeoutMs);
-   function done(err,value){clearTimeout(timer);v.removeAttribute('src');v.load();err?reject(err):resolve(value)}
-   v.onloadedmetadata=()=>done(null,{w:v.videoWidth,h:v.videoHeight,d:v.duration});
-   v.onerror=()=>done(new Error('Exported MP4 is not browser-playable'));
-   v.src=url;
- });
-}
-// Browser-native, frame-accurate video path inspired by the architecture studied in Kilat.txt.
-// Uses the independent Mediabunny project rather than copying reference site scripts.
-const NATIVE_CDNS=[
- 'https://cdn.jsdelivr.net/npm/mediabunny@1.64.0/dist/bundles/mediabunny.cjs',
- 'https://unpkg.com/mediabunny@1.64.0/dist/bundles/mediabunny.cjs'
-];
-async function getNativeLibrary(){
- if(nativeLibrary)return nativeLibrary;
- if(window.Mediabunny){nativeLibrary=window.Mediabunny;return nativeLibrary;}
- update('Loading browser-native media tools…',3);
- for(const url of NATIVE_CDNS){
-   try{
-     await new Promise((resolve,reject)=>{
-       const s=document.createElement('script');s.src=url;s.async=true;
-       const timeout=setTimeout(()=>{s.remove();reject(Error('Library download timed out'))},20000);
-       s.onload=()=>{clearTimeout(timeout);resolve()};s.onerror=()=>{clearTimeout(timeout);s.remove();reject(Error('CDN not reachable'))};
-       document.head.appendChild(s);
-     });
-     if(window.Mediabunny){nativeLibrary=window.Mediabunny;return nativeLibrary;}
-   }catch(e){console.warn('ClearSend library source unavailable',url,e);}
- }
- throw Error('Could not load the browser-native media library. Try the x264 engine, or check internet access.');
-}
-function bitrateForProfile(p){return {status:3.8e6,high:9e6,balanced:4.5e6,small:2e6}[p]||9e6;}
-// Bitrate is a target, not a size guarantee. For very long files avoid crushing
-// the picture merely to get below 10 MB: preserve detail and show a size warning.
-function chooseBitrate(profile,duration,preserveAudio){
- const base=profile==='auto'?9e6:bitrateForProfile(profile);
- if(!['status','balanced'].includes(profile)||!Number.isFinite(duration)||duration<=0)return base;
- const payloadBits=9_250_000*8;
- const budget=(payloadBits/Math.max(.5,duration))-(preserveAudio?160_000:0);
- return Math.round(Math.max(2_400_000,Math.min(base,budget*.97)));
-}
-async function isHdrVideo(track){
- try{return !!(await track.hasHighDynamicRange());}catch(e){
-  try{const cs=await track.getColorSpace();return cs?.transfer==='hlg'||cs?.transfer==='pq'||cs?.primaries==='bt2020';}catch(_){return false;}
- }
-}
-function publishOriginal(reason){
- outputBlob=file;outputUrl=URL.createObjectURL(file);
- $('outVideo').src=outputUrl;$('outVideo').hidden=false;$('outImage').hidden=true;
- showResult(file.name,`${bytes(file.size)} unchanged`,reason);
- update('Original file preserved with no additional blur or generation loss.',100);
-}
+$('videoQuality').querySelector('[value="status"]').textContent=
+  'Status · x264 · 3.8 Mbps rate cap';
+$('videoQuality').querySelector('[value="balanced"]').textContent=
+  'Balanced · up to 4.5 Mbps';
+$('videoQuality').closest('.field').querySelector('.hint').textContent=
+  'No duration-based size budget. Short-clip average bitrate and file size may vary.';
+$('hdrMode').closest('.field').querySelector('.hint').textContent=
+  'x264 tone-maps HLG/PQ to BT.709 SDR. Dolby Vision dynamic metadata is not applied. Preview colours before sharing.';
+$('process').nextElementSibling.textContent=
+  'x264 uses explicit HDR tone mapping. Conversion can take several minutes on a phone; keep Safari open. WhatsApp may still recompress the result.';
 
+chooseBitrate=(profile)=>
+  profile==='auto'?9e6:bitrateForProfile(profile);
 
-// Quality Guard: if the original is already Status-compatible, no re-encode is safest.
-// This is lossless file preservation, NOT a claimed compression or WhatsApp hack.
-async function processVideoQualityGuard(){
- update('Inspecting codec, resolution, FPS and audio before deciding…',5);
- const M=await getNativeLibrary();
- if(cancelRequested)throw Error('Cancelled');
- const input=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(file)});
- if(!await input.canRead())throw Error('Cannot inspect this container. Choose an explicit encode mode if needed.');
- const track=await input.getPrimaryVideoTrack();
- if(!track)throw Error('Video track not found');
- const w=await track.getDisplayWidth(),h=await track.getDisplayHeight();
- const videoCodec=await track.getCodec();
- const audioTrack=await input.getPrimaryAudioTrack();
- const audioCodec=audioTrack?await audioTrack.getCodec():null;
- let fps=0;
- try{const r=await track.computeFrameRateMetrics();fps=r.bestGuessFrameRate||0;}catch(e){}
- const hdr=await isHdrVideo(track);
- if(hdr&&$('hdrMode').value==='preserve'){
-  publishOriginal('HDR source detected. Original file preserved without transcoding because you chose Preserve HDR; it may exceed 10 MB and WhatsApp may still process it.');
-  return;
- }
- const expected=scaledSize(w,h,$('videoSize').value);
- const sizeFits=expected.w===w&&expected.h===h;
- const fpsFits=$('videoFps').value==='source'||(fps>0&&fps<=30.05);
- const audioFits=(!audioTrack||audioCodec==='aac')&&$('keepAudio').checked;
- const formatFits=/\.(mp4|m4v)$/i.test(file.name);
- const alreadyGood=!hdr&&formatFits&&videoCodec==='avc'&&audioFits&&sizeFits&&fpsFits;
- if(cancelRequested)throw Error('Cancelled');
- if(alreadyGood){
-   // Identical source bytes: no resize, smoothing, darkening, metadata rewrite, or generation loss.
-   outputBlob=file;
-   outputUrl=URL.createObjectURL(file);
-   $('outVideo').src=outputUrl;$('outVideo').hidden=false;$('outImage').hidden=true;
-   const filename=file.name.replace(/\.[^.]+$/,'')+'_clearsend_preserved.mp4';
-   const codecNote=`H.264 / ${audioTrack?'AAC':'no audio'} · ${fps.toFixed(2)} FPS`;
-   showResult(filename,`${w} × ${h} · ${codecNote} · ${bytes(file.size)} → ${bytes(file.size)} (unchanged)`,
-      'Quality Guard: this video already meets the selected compatibility limits. ClearSend deliberately made NO changes to the image or sound. No size reduction; original metadata (including any location data) remains. WhatsApp may still recompress it.');
-   update('Already compatible — original pixels and audio preserved without encoding.',100);
-   return;
- }
- const reasons=[];
- if(!formatFits||videoCodec!=='avc')reasons.push('needs H.264 MP4');
- if(!sizeFits)reasons.push('needs resizing');
- if(!fpsFits)reasons.push('needs FPS adjustment');
- if(!audioFits)reasons.push('needs audio conversion/removal');
- if(hdr)reasons.push('needs HDR-to-SDR color conversion');
- update('Conversion needed ('+reasons.join(', ')+'). Using selected engine with a detail-first bitrate…',7);
- if($('videoEngine').value==='x264')return processVideoWasm();
- return processVideoNative();
-}
+const previousProcess=$('process').onclick;
+$('process').onclick=async function(){
+  const controls=[
+    ...document.querySelectorAll('.settings input,.settings select')
+  ];
+  controls.forEach(el=>el.disabled=true);
+  try{
+    await previousProcess();
+  }finally{
+    controls.forEach(el=>el.disabled=false);
+  }
+};
 
-async function processVideoNative(){
- if(!('VideoEncoder' in window)||!('VideoDecoder' in window))
-  throw Error('This browser does not expose the WebCodecs video encoder/decoder. Try the optional x264 engine.');
- const M=await getNativeLibrary();
- if(cancelRequested)throw Error('Cancelled');
- const input=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(file)});
- if(!await input.canRead())throw Error('This video container cannot be read by the native engine.');
- const track=await input.getPrimaryVideoTrack();
- if(!track)throw Error('The file has no usable video track.');
- if(!(await track.canDecode()))throw Error('Your browser cannot decode this video codec (often unsupported HEVC/HDR).');
- const hdr=await isHdrVideo(track);
- if(hdr && $('hdrMode').value==='preserve'){
-  publishOriginal('HDR detected. Original file preserved exactly as requested. It may exceed 10 MB.');
-  return;
- }
- const sw=await track.getDisplayWidth(),sh=await track.getDisplayHeight();
- const sourceDuration=await input.computeDuration();
- if(!Number.isFinite(sourceDuration)||sourceDuration<=0)throw Error('Invalid video duration.');
- if(sourceDuration>180)throw Error('For this beta, use video clips up to 3 minutes.');
- const dims=scaledSize(sw,sh,$('videoSize').value);
- const keepSound=$('keepAudio').checked;
- const rate=chooseBitrate($('videoQuality').value,sourceDuration,keepSound);
- let sourceFps=0;
- try{const m=await track.computeFrameRateMetrics();sourceFps=m.bestGuessFrameRate||0;}catch(e){}
- const fpsLimit=$('videoFps').value==='30' && sourceFps>30.05?30:null;
- const result=new M.Output({format:new M.Mp4OutputFormat({fastStart:'in-memory'}),target:new M.BufferTarget()});
- const videoOpts={codec:'avc',width:dims.w,height:dims.h,fit:'contain',
-  quality:new M.Quality({bitrate:rate}),keyFrameInterval:2,hardwareAcceleration:'no-preference',
-  allowTransformationMetadata:false,forceTranscode:true};
- if(fpsLimit)videoOpts.frameRate=30;
- if(hdr){
-  // Offline, per-frame conversion; NOT HTMLVideoElement playback recording.
-  // WebCodecs rendering converts HDR video frames to an sRGB canvas surface.
-  // Browser-specific HDR tone mapping means this is explicitly experimental.
-  const canvas=document.createElement('canvas');
-  canvas.width=dims.w;canvas.height=dims.h;
-  const ctx=canvas.getContext('2d',{alpha:false,colorSpace:'srgb'});
-  if(!ctx)throw Error('Could not create SDR color-processing canvas.');
-  videoOpts.process=sample=>{
-   ctx.fillStyle='#000';ctx.fillRect(0,0,dims.w,dims.h);
-   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-   sample.draw(ctx,0,0,dims.w,dims.h);
-   return new M.VideoSample(canvas,{timestamp:sample.timestamp,duration:sample.duration});
-  };
- }
-
- update(`${hdr?'Converting HDR to SDR (experimental)':'Encoding SDR'} at ${dims.w} × ${dims.h} · target ~${(rate/1e6).toFixed(2)} Mbps…`,10);
- const options={input,output:result,tracks:'primary',video:videoOpts,
-  audio:keepSound?{codec:'aac'}:{discard:true},tags:{}};
- const conversion=await M.Conversion.init(options);
- nativeConversion=conversion;
- try{
-   if(!conversion.isValid){
-     const reason=conversion.discardedTracks?.map(x=>x.reason).filter(Boolean).join(', ');
-     throw Error('Native conversion not supported for this input'+(reason?' ('+reason+')':'')+'.');
-   }
-   if(conversion.discardedTracks?.some(x=>x.track?.type==='video'))
-      throw Error('Video track could not be encoded as H.264.');
-   if(keepSound&&conversion.discardedTracks?.some(x=>x.track?.type==='audio'))
-      throw Error('Audio track cannot be preserved in MP4 with this browser.');
-   conversion.onProgress=p=>{if(!cancelRequested)update(`Encoding complete video frames… ${Math.round(p*100)}%`,12+Math.round(p*78));};
-   await conversion.execute();
-   if(cancelRequested)throw Error('Cancelled');
-   const buffer=result.target.buffer;
-   if(!buffer||buffer.byteLength<2000)throw Error('Native encoder produced no MP4 output.');
-   const blob=new Blob([buffer],{type:'video/mp4'});
-   await verifyAndPublish(blob,sw,sh,sourceDuration,hdr?'WebCodecs · HDR→SDR experimental':'WebCodecs H.264',M,sourceFps,keepSound,input,hdr);
- }finally{nativeConversion=null;}
-}
-async function verifyAndPublish(blob,sw,sh,sd,engineLabel,M=null,sourceFps=0,keepSound=true,sourceInput=null,expectSdr=false){
- update('Checking file size, dimensions, duration and playback…',94);
- const u=URL.createObjectURL(blob);
- try{
-   const info=await videoDetails(u,22000);
-   const expected=scaledSize(sw,sh,$('videoSize').value);
-   if(!info.w||!info.h)throw Error('Output does not contain playable video.');
-   if(Math.min(info.w/expected.w,info.h/expected.h)<0.94)
-     throw Error(`Resolution safeguard: expected ${expected.w} × ${expected.h}, got ${info.w} × ${info.h}. Output rejected.`);
-   if(Number.isFinite(info.d)&&Number.isFinite(sd)&&sd>2&&Math.abs(info.d-sd)>Math.max(.55,sd*.05))
-     throw Error(`Duration safeguard: ${sd.toFixed(1)}s became ${info.d.toFixed(1)}s. Output rejected.`);
-   // A timestamp-only MP4 check cannot detect lost frames. Inspect actual packet counts where possible.
-   let verifiedFps='';
-   if(M){
-     const check=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(blob)});
-     const outTrack=await check.getPrimaryVideoTrack();
-     if(!outTrack)throw Error('Encoded file has no video track.');
-     if(expectSdr && await isHdrVideo(outTrack))
-       throw Error('HDR safety check: output still advertises HDR/BT.2020 instead of SDR. Export rejected to avoid incorrect colors. Choose Preserve HDR or try a different device.');
-     const outStats=await outTrack.computePacketStats();
-     const outRate=outStats.averagePacketRate;
-     let expected=sourceFps;
-     if($('videoFps').value==='30'&&expected>30)expected=30;
-     if(expected>=20&&outRate<expected*.72)
-       throw Error(`Frame-rate safeguard: expected roughly ${expected.toFixed(1)} FPS but output contains ${outRate.toFixed(1)} FPS. Output rejected.`);
-     const originalAudio=sourceInput&&await sourceInput.getPrimaryAudioTrack();
-     if(keepSound&&originalAudio&&!(await check.getPrimaryAudioTrack()))
-       throw Error('Source had audio, but exported MP4 lost its audio track. Output rejected.');
-     verifiedFps=` · ${outRate.toFixed(2)} avg FPS`;
-   }
-   if(cancelRequested)throw Error('Cancelled');
-   outputBlob=blob;outputUrl=u;$('outVideo').src=u;$('outVideo').hidden=false;$('outImage').hidden=true;
-   const change=100*(blob.size/file.size-1);
-   const changeText=change>0?`larger by ${change.toFixed(1)}%`:`smaller by ${(-change).toFixed(1)}%`;
-   showResult(file.name.replace(/\.[^.]+$/,'')+'_clearsend_status_hd.mp4',
-      `${info.w} × ${info.h} · ${info.d.toFixed(2)}s${verifiedFps} · ${bytes(file.size)} → ${bytes(blob.size)} (${changeText}) · ${engineLabel}`,
-      (expectSdr?'HDR was rendered to SDR in the browser. Carefully compare colors, shadow detail, and motion against your original before posting. ':'')+
-      (blob.size>10_000_000?'Output exceeds the preferred 10 MB target; lowering bitrate further could make the picture blurry. ':'')+
-      (blob.size>file.size*.94?'Re-encoding saved less than 6% and may look softer; Quality Guard is often safer.':'Frame-by-frame output (not screen recording); WhatsApp may still recompress.'));
-   update('Video ready: preview and compare before Status upload.',100);
- }catch(err){URL.revokeObjectURL(u);throw err;}
-}
-async function processVideo(){
- const isPhone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
- const max=(isPhone?90:250)*1024*1024;
- if(file.size>max)throw Error('For this beta, please choose a file below '+(isPhone?'90':'250')+' MB.');
- if($('videoQuality').value==='auto')return processVideoQualityGuard();
- if($('videoEngine').value==='x264')return processVideoWasm();
- return processVideoNative();
-}
 async function processVideoWasm(){
- // This lightweight wasm build has no verified HDR tone-mapping filter chain.
- // Never silently treat HDR input as ordinary SDR.
- const M=await getNativeLibrary();
- const check=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(file)});
- const vt=await check.getPrimaryVideoTrack();
- if(vt&&await isHdrVideo(vt)){
-   if($('hdrMode').value==='preserve'){publishOriginal('HDR source preserved as requested; x264 conversion skipped.');return;}
-   throw Error('HDR color conversion requires the WebCodecs engine in this single-file beta. Choose WebCodecs and HDR-to-SDR, or preserve the original.');
- }
- const isPhone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
- const maxFile=(isPhone?50:120)*1024*1024;
- if(file.size>maxFile)throw new Error('Clip exceeds the '+(isPhone?'50':'120')+' MB beta safety limit on this device. Large FFmpeg.wasm jobs may run out of memory.');
- if(sourceInfo && Number.isFinite(sourceInfo.d) && sourceInfo.d>180)throw new Error('For this beta, use video clips shorter than 3 minutes.');
- const activeFile=file;
- const f=await getEngine();
- if(cancelRequested)throw new Error('Cancelled');
- ffmpegLog=[];
- const suffix=(file.name.split('.').pop()||'mp4').replace(/[^a-z0-9]/gi,'').toLowerCase()||'mp4';
- const input='clearsend_input.'+suffix, output='clearsend_output.mp4';
- try{
-   update('Loading source into encoder…',12);
-   const data=await activeFile.arrayBuffer();
-   await f.call('write',{path:input,data},[data]);
-   const size=$('videoSize').value, quality=$('videoQuality').value;
-   // Never upscale. 1080p means 1920x1080 OR 1080x1920, never 1080x608.
-   const limit=size==='720'?1280:1920;
-   const scale=size==='source'?'scale=trunc(iw/2)*2:trunc(ih/2)*2':`scale=w='min(iw,${limit})':h='min(ih,${limit})':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos`;
-   const filters=[scale];
-   // FFmpeg's source_fps ensures 24/25/29.97 fps clips aren't artificially raised to 30.
-   if($('videoFps').value==='30')filters.push("fps=fps='min(30,source_fps)'");
-   const profiles={
-     auto:['-crf','17'],
-     status:['-crf','20','-maxrate','4200k','-bufsize','8400k'],
-     high:['-crf','17'],
-     balanced:['-crf','21','-maxrate','5000k','-bufsize','10000k'],
-     small:['-crf','26','-maxrate','2000k','-bufsize','4000k']
-   };
-   // Avoid pointless resizing when keeping the source dimensions.
-   const args=['-nostdin','-i',input,'-map','0:v:0','-vf',filters.join(','),'-c:v','libx264','-preset',(quality==='high'||quality==='auto')?'slow':'medium',...(profiles[quality]||profiles.auto),'-pix_fmt','yuv420p','-colorspace','bt709','-color_primaries','bt709','-color_trc','bt709','-g','60','-bf','2','-profile:v','high'];
-   if($('keepAudio').checked)args.push('-map','0:a:0?','-c:a','aac','-b:a','128k');else args.push('-an');
-   args.push('-sn','-dn','-map_metadata','-1','-map_chapters','-1','-movflags','+faststart','-y',output);
-   update('Encoding full-resolution video…',18);
-   const ret=await f.call('exec',{args});
-   if(cancelRequested)throw new Error('Cancelled');
-   if(ret!==0)throw new Error('FFmpeg exited '+ret+': '+ffmpegLog.slice(-5).join(' ').slice(-350));
-   update('Verifying frame dimensions…',95);
-   const encoded=await f.call('read',{path:output});
-   if(!(encoded instanceof Uint8Array)||encoded.length<2000)throw new Error('No valid MP4 was produced');
-   const tempBlob=new Blob([encoded],{type:'video/mp4'}),tempURL=URL.createObjectURL(tempBlob);
-   try{
-     const info=await videoDetails(tempURL);
-     if(!info.w||!info.h)throw new Error('Video has no visible frames');
-     if(sourceInfo?.w && sourceInfo?.h){
-       const expected=scaledSize(sourceInfo.w,sourceInfo.h,size);
-       const got=Math.min(info.w/expected.w,info.h/expected.h);
-       if(got<0.94)throw new Error(`Quality safeguard: expected approximately ${expected.w} × ${expected.h}, got ${info.w} × ${info.h}. Export rejected.`);
-       const a=sourceInfo.d,b=info.d;
-       if(Number.isFinite(a)&&Number.isFinite(b)&&a>2&&Math.abs(a-b)>Math.max(0.5,a*0.05))throw new Error(`Video duration changed unexpectedly (${a.toFixed(1)}s → ${b.toFixed(1)}s). Export rejected.`);
-     }
-     outputBlob=tempBlob;outputUrl=tempURL;
-     $('outVideo').src=outputUrl;$('outVideo').hidden=false;$('outImage').hidden=true;
-     const saved=(1-outputBlob.size/file.size)*100;
-     const change=saved>=0?`saved ${saved.toFixed(1)}%`:`grew ${Math.abs(saved).toFixed(1)}%`;
-     const note=outputBlob.size>file.size?'The result is larger than the source. Keep the original if the visual improvement is not worth the size.':'Full-resolution output verified. Look for motion stutter and detail loss before posting. WhatsApp may still recompress.';
-     showResult(activeFile.name.replace(/\.[^.]+$/,'')+'_clearsend.mp4',`${info.w} × ${info.h} · ${Number.isFinite(info.d)?info.d.toFixed(2)+' s · ':''}${bytes(activeFile.size)} → ${bytes(outputBlob.size)} (${change})`,note);
-     $('original').hidden=false;
-     update('Status HD video ready. Compare with the original.',100);
-   }catch(e){URL.revokeObjectURL(tempURL);throw e;}
- }finally{
-   try{await f.call('delete',{path:input});}catch(e){}
-   try{await f.call('delete',{path:output});}catch(e){}
- }
+  const M=await getNativeLibrary();
+  const check=new M.Input({
+    formats:M.ALL_FORMATS,
+    source:new M.BlobSource(file)
+  });
+  const vt=await check.getPrimaryVideoTrack();
+  if(!vt)throw Error('No readable video track.');
+
+  const hdr=await isHdrVideo(vt);
+  if(hdr && $('hdrMode').value==='preserve'){
+    publishOriginal('HDR source preserved as requested.');
+    return;
+  }
+
+  const cs=await vt.getColorSpace();
+  if(hdr && !['hlg','pq'].includes(cs?.transfer)){
+    throw Error(
+      'HDR transfer could not be identified safely. Choose Preserve HDR.'
+    );
+  }
+
+  const sw=await vt.getDisplayWidth();
+  const sh=await vt.getDisplayHeight();
+  const sd=await check.computeDuration();
+  if(!Number.isFinite(sd)||sd<=0||sd>180){
+    throw Error('Use a valid clip up to 3 minutes.');
+  }
+
+  let sourceFps=0;
+  try{
+    sourceFps=(await vt.computeFrameRateMetrics()).bestGuessFrameRate||0;
+  }catch(e){}
+
+  const isPhone=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const maxFile=(isPhone?50:120)*1024*1024;
+  if(file.size>maxFile){
+    throw Error(
+      'Clip exceeds the '+(isPhone?'50':'120')+
+      ' MB browser-processing limit. Use a shorter original clip.'
+    );
+  }
+
+  const activeFile=file;
+  const f=await getEngine();
+  if(cancelRequested)throw Error('Cancelled');
+  ffmpegLog=[];
+
+  const suffix=(file.name.split('.').pop()||'mp4')
+    .replace(/[^a-z0-9]/gi,'').toLowerCase()||'mp4';
+  const input='clearsend_input.'+suffix;
+  const output='clearsend_output.mp4';
+
+  try{
+    update('Loading original into encoder…',12);
+    const data=await activeFile.arrayBuffer();
+    await f.call('write',{path:input,data},[data]);
+
+    const size=$('videoSize').value;
+    const quality=$('videoQuality').value;
+    const limit=size==='720'?1280:1920;
+
+    const scale=size==='source'
+      ? 'scale=trunc(iw/2)*2:trunc(ih/2)*2'
+      : `scale=w='min(iw,${limit})':h='min(ih,${limit})':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos`;
+
+    // Convert pixel values before applying output colour metadata.
+    // These filters are included in the existing FFmpeg core 0.12.10.
+    const colour=hdr
+      ? 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=mobius:desat=2,zscale=t=bt709:m=bt709:r=limited,format=yuv420p'
+      : cs?.primaries && cs?.transfer && cs?.matrix
+        ? 'colorspace=all=bt709:range=tv:format=yuv420p'
+        : 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p';
+
+    const filters=[colour,scale];
+    if($('videoFps').value==='30'){
+      filters.push("fps=fps='min(30,source_fps)'");
+    }
+
+    const profiles={
+      auto:['-crf','17'],
+      status:['-crf','20','-maxrate','3800k','-bufsize','7600k'],
+      high:['-crf','17','-maxrate','9000k','-bufsize','18000k'],
+      balanced:['-crf','20','-maxrate','4500k','-bufsize','9000k'],
+      small:['-crf','26','-maxrate','2000k','-bufsize','4000k']
+    };
+
+    const args=[
+      '-nostdin','-i',input,
+      '-map','0:v:0',
+      '-vf',filters.join(','),
+      '-c:v','libx264',
+      '-preset',(quality==='high'||quality==='auto')?'slow':'medium',
+      ...(profiles[quality]||profiles.status),
+      '-pix_fmt','yuv420p',
+      '-color_range','tv',
+      '-colorspace','bt709',
+      '-color_primaries','bt709',
+      '-color_trc','bt709',
+      '-g','60','-bf','2','-profile:v','high'
+    ];
+
+    if($('keepAudio').checked){
+      args.push(
+        '-map','0:a:0?',
+        '-c:a','aac','-b:a','128k','-ar','44100','-ac','2'
+      );
+    }else{
+      args.push('-an');
+    }
+
+    args.push(
+      '-sn','-dn',
+      '-map_metadata','-1',
+      '-map_chapters','-1',
+      '-movflags','+faststart',
+      '-y',output
+    );
+
+    update('Tone mapping and encoding video…',18);
+    const ret=await f.call('exec',{args});
+    if(cancelRequested)throw Error('Cancelled');
+    if(ret!==0){
+      throw Error(
+        'FFmpeg exited '+ret+': '+
+        ffmpegLog.slice(-5).join(' ').slice(-350)
+      );
+    }
+
+    update('Verifying exported video…',95);
+    const encoded=await f.call('read',{path:output});
+    if(!(encoded instanceof Uint8Array)||encoded.length<2000){
+      throw Error('No valid MP4 was produced.');
+    }
+
+    const blob=new Blob([encoded],{type:'video/mp4'});
+    await verifyAndPublish(
+      blob,sw,sh,sd,
+      hdr?'x264 · HLG/PQ → BT.709 SDR':'x264 · BT.709 SDR',
+      M,sourceFps,$('keepAudio').checked,check,true
+    );
+
+    $('resultHint').textContent=
+      'x264 · limited-range BT.709 SDR. '+
+      (hdr?'HLG/PQ tone-mapped without Dolby Vision dynamic metadata. ':'')+
+      'Compare colours and the posted Status; WhatsApp may still recompress.';
+  }finally{
+    try{await f.call('delete',{path:input});}catch(e){}
+    try{await f.call('delete',{path:output});}catch(e){}
+  }
 }
-function showResult(name,meta,hint){
- $('result').style.display='block';$('outMeta').textContent=name+' · '+meta;$('resultHint').textContent=hint;
- $('download').onclick=()=>{if(!outputUrl)return;const a=document.createElement('a');a.href=outputUrl;a.download=name;a.click()};
- const shareBtn=$('share');shareBtn.hidden=true;
- try{
-   if(outputBlob&&navigator.canShare){
-     const sharedFile=new File([outputBlob],name,{type:outputBlob.type||'application/octet-stream'});
-     if(navigator.canShare({files:[sharedFile]})){
-       shareBtn.hidden=false;
-       shareBtn.onclick=async()=>{try{await navigator.share({files:[sharedFile],title:'ClearSend media'});}catch(e){if(e?.name!=='AbortError')update('Share failed. Use Download to save your file.',100);}};
-     }
-   }
- }catch(e){shareBtn.hidden=true;}
- $('result').scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-selectMode('video');
 </script>
 </body></html>
