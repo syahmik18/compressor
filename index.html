@@ -1,399 +1,1512 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101827"><title>ClearSend v5 — GPU Status</title><style>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>ClearSend v5 — GPU Status</title>
+<style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#121d2e;--panel2:#172438;--line:#29384e;--text:#edf4ff;--muted:#9aabc2;--blue:#63a8ff;--cyan:#53e0d0;--good:#6ee7b7;--warn:#ffd18a}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -15%,#1c3556 0,transparent 48%),var(--bg);color:var(--text);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
-.shell{width:min(940px,100% - 32px);margin:0 auto;padding:34px 0 56px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:34px}.brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:-.04em;font-size:21px}.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(145deg,var(--blue),var(--cyan));display:grid;place-items:center;color:#081323;font-weight:900;font-size:20px}.local{font-size:12px;color:var(--good);border:1px solid #245b50;background:#12342f;padding:6px 10px;border-radius:99px}
-.hero{margin-bottom:24px}.eyebrow{color:var(--cyan);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}.hero h1{font-size:clamp(32px,6vw,54px);line-height:1.04;letter-spacing:-.055em;margin:12px 0}.hero h1 span{color:var(--blue)}.hero p{color:var(--muted);max-width:650px;margin:0}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.panel{background:linear-gradient(160deg,#152238,#101a2a);border:1px solid var(--line);border-radius:19px;padding:20px;min-width:0}.wide{grid-column:1/-1}.step{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:13px}
-.tabs{display:flex;background:#0c1626;border:1px solid var(--line);padding:4px;border-radius:12px;gap:4px;margin-bottom:16px}.tabs button{flex:1;border:0;border-radius:9px;padding:10px;background:transparent;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}.tabs button.active{background:#263b58;color:white}
-.drop{border:1.5px dashed #48617e;border-radius:15px;padding:25px 14px;text-align:center;background:#0c1727;transition:.15s}.drop.over{border-color:var(--cyan);background:#112b35}.drop strong{display:block;font-size:16px}.drop p,.hint{color:var(--muted);font-size:13px;margin:7px 0 0}.btn{border:0;border-radius:11px;padding:12px 16px;background:linear-gradient(110deg,#68aaff,#54dfd0);color:#071321;font:inherit;font-weight:800;cursor:pointer}.btn:disabled{opacity:.4;cursor:not-allowed}.btn.secondary{background:#263a54;color:var(--text);border:1px solid #3b506d}.fileline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:#0d192a;border:1px solid var(--line);border-radius:12px;margin-top:13px}.fileline span{min-width:0;overflow-wrap:anywhere;font-size:13px}.fileline small{color:var(--muted);display:block}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 50% -15%,#1c3556 0,transparent 48%),var(--bg);color:var(--text);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.shell{width:min(940px,100% - 32px);margin:0 auto;padding:34px 0 56px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:34px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:-.04em;font-size:21px}
+.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(145deg,var(--blue),var(--cyan));display:grid;place-items:center;color:#081323;font-weight:900;font-size:20px}
+.local{font-size:12px;color:var(--good);border:1px solid #245b50;background:#12342f;padding:6px 10px;border-radius:99px}
+.hero{margin-bottom:24px}
+.eyebrow{color:var(--cyan);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+.hero h1{font-size:clamp(32px,6vw,54px);line-height:1.04;letter-spacing:-.055em;margin:12px 0}
+.hero h1 span{color:var(--blue)}
+.hero p{color:var(--muted);max-width:650px;margin:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.panel{background:linear-gradient(160deg,#152238,#101a2a);border:1px solid var(--line);border-radius:19px;padding:20px;min-width:0}
+.wide{grid-column:1/-1}
+.step{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:13px}
+.hint{color:var(--muted);font-size:13px;margin:7px 0 0}
+.btn{border:0;border-radius:11px;padding:12px 16px;background:linear-gradient(110deg,#68aaff,#54dfd0);color:#071321;font:inherit;font-weight:800;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.secondary{background:#263a54;color:var(--text);border:1px solid #3b506d}
 .preview{width:100%;max-height:300px;object-fit:contain;background:#050a12;border-radius:12px;margin-top:14px}
-.settings{display:grid;gap:14px}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}.field select,.field input[type=range]{width:100%}.field select{background:#0b1728;border:1px solid #344862;border-radius:10px;padding:11px;color:var(--text);font:inherit}.check{display:flex;gap:9px;align-items:flex-start;color:var(--muted);font-size:13px}.check input{margin-top:5px;accent-color:var(--blue)}
-.specs{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:15px}.spec{padding:11px;background:#0c1727;border:1px solid var(--line);border-radius:11px}.spec small{display:block;color:var(--muted);font-size:11px}.spec b{font-size:14px}
-.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.progress{height:9px;background:#0a1422;border-radius:99px;overflow:hidden;border:1px solid var(--line);margin:13px 0}.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .2s}
-.status{font-size:13px;color:var(--muted);min-height:22px}.result{display:none;margin-top:15px}.result video,.result img{width:100%;max-height:390px;object-fit:contain;background:#050a12;border-radius:12px}.result .fileline{margin:12px 0 0}
-.guide{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.guide article{background:#0c1727;border:1px solid var(--line);border-radius:13px;padding:14px}.guide b{display:block;margin-bottom:5px}.guide p{color:var(--muted);font-size:13px;margin:0}
-.note{font-size:12px;color:var(--muted);margin-top:14px}.footer{color:#73849b;font-size:12px;margin-top:24px;text-align:center}
-@media(max-width:680px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.guide{grid-template-columns:1fr}.top{margin-bottom:25px}.panel{padding:16px}.specs{grid-template-columns:repeat(3,1fr)}}
+.field label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}
+.field select{width:100%;background:#0b1728;border:1px solid #344862;border-radius:10px;padding:11px;color:var(--text);font:inherit}
+.check{display:flex;gap:9px;align-items:flex-start;color:var(--muted);font-size:13px}
+.check input{margin-top:5px;accent-color:var(--blue)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.result{display:block;margin-top:15px}
+.result video,.result img{width:100%;max-height:390px;object-fit:contain;background:#050a12;border-radius:12px}
+.note{font-size:12px;color:var(--muted);margin-top:14px}
+.footer{color:#73849b;font-size:12px;margin-top:24px;text-align:center}
+progress{width:100%;height:12px;accent-color:#53e0d0}
+#settings{display:grid;gap:15px}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #53e0d0;outline-offset:3px}
 [hidden]{display:none!important}
+@media(max-width:680px){
+ .grid{grid-template-columns:1fr}
+ .wide{grid-column:auto}
+ .top{margin-bottom:25px}
+ .panel{padding:16px}
+}
+</style>
+</head>
+<body>
+<main class="shell">
+<header class="top">
+ <div class="brand"><div class="logo">C</div>ClearSend <small>v5</small></div>
+ <div class="local">Private · on-device</div>
+</header>
 
-progress{width:100%;height:12px;accent-color:#53e0d0}#settings{display:grid;gap:15px}#settings[hidden]{display:none}.result{display:block}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #53e0d0;outline-offset:3px}
-</style></head><body><main class="shell">
-<header class="top"><div class="brand"><div class="logo">C</div>ClearSend <small>v5</small></div><div class="local">Private · on-device</div></header>
-<section class="hero"><div class="eyebrow">GPU Status prototype</div><h1>Keep your moments <span>clear.</span></h1><p>Browser decoding, explicit GPU colour conversion, and optional x264 finishing. Video outputs are checked against a 9.5 MB target.</p></section>
-<div class="grid"><section class="panel"><div class="step">01 / Original media</div>
-<label for="file">Choose an original video or photo</label><input id="file" type="file" accept="video/*,image/*" style="display:block;width:100%;margin-top:12px"><p id="sourceName" class="hint">No fixed input-file-size cap. Browser memory and codec support still apply.</p>
-<video id="sourceVideo" class="preview" controls playsinline hidden></video><img id="sourceImage" class="preview" alt="Original photo" hidden>
-<p class="note">Use an HTTPS page for WebCodecs. Keep this tab open while processing. Engine libraries load from a CDN; your media stays on your device.</p></section>
-<section class="panel"><div class="step">02 / Prepare for Status</div><div id="settings">
-<div class="field"><label for="engine">Processing route</label><select id="engine"><option value="fast" selected>GPU + browser encoder · test first</option><option value="hybrid">GPU + x264 finishing · slower comparison</option></select><p class="hint">The fastest option skips x264. Actual acceleration depends on the browser/device.</p></div>
-<div class="field"><label for="preset">x264 finishing speed</label><select id="preset"><option value="medium" selected>Medium · better compression efficiency</option><option value="veryfast">Very fast · quicker finishing</option></select></div>
-<div class="field"><label for="resolution">Maximum video size</label><select id="resolution"><option value="1920">1080p · detail</option><option value="1280">720p · faster, smaller frames</option></select></div>
-<div class="field"><label for="split">Split video</label><select id="split"><option value="15" selected>15-second parts · more detail per part</option><option value="30">30-second parts</option><option value="0">One complete video</option></select><p class="hint">Each output targets 9.5 MB. Longer parts require lower bitrate. Frames are capped at the lower of source FPS and 30 FPS.</p></div>
-<label class="check"><input id="audio" type="checkbox" checked> Keep AAC audio</label>
-<p class="note">HDR uses an explicit HLG/PQ conversion inspired by the reference. Dolby Vision dynamic metadata is not applied. Compare skin tones and highlights. If this browser cannot expose compatible decoded frames, use your v4 backup.</p>
-</div><button id="run" class="btn" disabled style="width:100%;margin-top:18px">Prepare media</button><button id="cancel" class="btn secondary" hidden style="margin-top:12px">Cancel</button>
-<p class="note">Photos export as JPEG at 93% quality, up to 1920 pixels on the longest edge.</p></section>
-<section class="panel wide"><div id="status" role="status" aria-live="polite">Choose an original file.</div><progress id="progress" max="1" value="0"></progress>
-<div id="result" class="result" hidden><div class="field"><label for="parts">Completed files</label><select id="parts"></select></div>
-<video id="outVideo" controls playsinline hidden></video><img id="outImage" alt="Processed photo" hidden>
-<p id="meta" class="hint"></p><div class="actions"><button id="download" class="btn">Download selected</button><button id="share" class="btn secondary" hidden>Share selected</button><button id="removePart" class="btn secondary">Remove saved part</button></div>
-<p class="note">Save each part in numbered order. Completed files remain in memory until removed or another source is selected. WhatsApp can still recompress them; export settings cannot guarantee the posted result.</p></div></section>
-</div><div class="footer">ClearSend v5 · Experimental GPU path · Keep v4 as your compatibility backup</div></main><script>
+<section class="hero">
+ <div class="eyebrow">GPU Status prototype</div>
+ <h1>Keep your moments <span>clear.</span></h1>
+ <p>Browser decoding, explicit GPU colour conversion, and optional x264 finishing. Video outputs are checked against a 9.5 MB target.</p>
+</section>
+
+<div class="grid">
+<section class="panel">
+ <div class="step">01 / Original media</div>
+ <label for="file">Choose an original video or photo</label>
+ <input id="file" type="file" accept="video/*,image/*" style="display:block;width:100%;margin-top:12px">
+ <p id="sourceName" class="hint">No fixed input-file-size cap. Browser memory and codec support still apply.</p>
+ <video id="sourceVideo" class="preview" controls playsinline hidden></video>
+ <img id="sourceImage" class="preview" alt="Original photo" hidden>
+ <p class="note">Use an HTTPS page for WebCodecs. Keep this tab open while processing. Engine libraries load from a CDN; your media stays on your device.</p>
+</section>
+
+<section class="panel">
+ <div class="step">02 / Prepare for Status</div>
+ <div id="settings">
+  <div class="field">
+   <label for="engine">Processing route</label>
+   <select id="engine">
+    <option value="fast" selected>GPU + browser encoder · test first</option>
+    <option value="hybrid">GPU + x264 finishing · slower comparison</option>
+   </select>
+   <p class="hint">The fastest option skips x264. Actual acceleration depends on the browser/device.</p>
+  </div>
+  <div class="field">
+   <label for="preset">x264 finishing speed</label>
+   <select id="preset">
+    <option value="medium" selected>Medium · better compression efficiency</option>
+    <option value="veryfast">Very fast · quicker finishing</option>
+   </select>
+  </div>
+  <div class="field">
+   <label for="resolution">Maximum video size</label>
+   <select id="resolution">
+    <option value="1920">1080p · detail</option>
+    <option value="1280">720p · faster, smaller frames</option>
+   </select>
+  </div>
+  <div class="field">
+   <label for="split">Split video</label>
+   <select id="split">
+    <option value="15" selected>15-second parts · more detail per part</option>
+    <option value="30">30-second parts</option>
+    <option value="0">One complete video</option>
+   </select>
+   <p class="hint">Each output targets 9.5 MB. Longer parts require lower bitrate. Frames are capped at the lower of source FPS and 30 FPS.</p>
+  </div>
+  <label class="check"><input id="audio" type="checkbox" checked> Keep AAC audio</label>
+  <p class="note">HDR uses an explicit HLG/PQ conversion inspired by the reference. Dolby Vision dynamic metadata is not applied. Compare skin tones and highlights. If this browser cannot expose compatible decoded frames, use your v4 backup.</p>
+ </div>
+ <button id="run" class="btn" disabled style="width:100%;margin-top:18px">Prepare media</button>
+ <button id="cancel" class="btn secondary" hidden style="margin-top:12px">Cancel</button>
+ <p class="note">Photos export as JPEG at 93% quality, up to 1920 pixels on the longest edge.</p>
+</section>
+
+<section class="panel wide">
+ <div id="status" role="status" aria-live="polite">Choose an original file.</div>
+ <progress id="progress" max="1" value="0"></progress>
+ <div id="result" class="result" hidden>
+  <div class="field">
+   <label for="parts">Completed files</label>
+   <select id="parts"></select>
+  </div>
+  <video id="outVideo" controls playsinline hidden></video>
+  <img id="outImage" alt="Processed photo" hidden>
+  <p id="meta" class="hint"></p>
+  <div class="actions">
+   <button id="download" class="btn">Download selected</button>
+   <button id="share" class="btn secondary" hidden>Share selected</button>
+   <button id="removePart" class="btn secondary">Remove saved part</button>
+  </div>
+  <p class="note">Save each part in numbered order. Completed files remain in memory until removed or another source is selected. WhatsApp can still recompress them; export settings cannot guarantee the posted result.</p>
+ </div>
+</section>
+</div>
+<div class="footer">ClearSend v5 · Experimental GPU path · Keep v4 as your compatibility backup</div>
+</main>
+
+<script>
 // GPU conversion from decoded YUV planes to explicit BT.709 limited-range I420.
 class StatusGPU {
  constructor(w,h){
-  this.w=w;this.h=h;this.resources=[];this.lost=false;
+  this.w=w;
+  this.h=h;
+  this.resources=[];
+  this.lost=false;
   this.canvas=document.createElement('canvas');
-  this.gl=this.canvas.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,premultipliedAlpha:false});
+  this.gl=this.canvas.getContext('webgl2',{
+   alpha:false,
+   antialias:false,
+   depth:false,
+   stencil:false,
+   premultipliedAlpha:false
+  });
   if(!this.gl)throw Error('WebGL2 is unavailable. Use the v4 compatibility version.');
-  this.canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();this.lost=true});
-  const g=this.gl;g.disable(g.DITHER);
+  this.canvas.addEventListener('webglcontextlost',e=>{
+   e.preventDefault();
+   this.lost=true;
+  });
+
+  const g=this.gl;
+  g.disable(g.DITHER);
+
   const vertex=`#version 300 es
-  void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.0-1.0,0,1);}`;
+  void main(){
+   vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));
+   gl_Position=vec4(p*2.0-1.0,0,1);
+  }`;
+
   const common=`#version 300 es
-  precision highp float; precision highp int;
+  precision highp float;
+  precision highp int;
   out vec4 pixel;`;
+
   this.convert=this.program(vertex,common+`
   precision highp usampler2D;
   uniform usampler2D yp,up,vp;
   uniform ivec2 ys,cs,os;
   uniform int nv,rot,flip,full,mode;
   uniform float maximum,kr,kb;
+
   float plane(usampler2D t,vec2 p,ivec2 size,int channel){
-   p=clamp(p,vec2(0),vec2(size-1));ivec2 a=ivec2(floor(p)),b=min(a+1,size-1);vec2 f=fract(p);
-   return mix(mix(float(texelFetch(t,a,0)[channel]),float(texelFetch(t,ivec2(b.x,a.y),0)[channel]),f.x),
-    mix(float(texelFetch(t,ivec2(a.x,b.y),0)[channel]),float(texelFetch(t,b,0)[channel]),f.x),f.y);
+   p=clamp(p,vec2(0),vec2(size-1));
+   ivec2 a=ivec2(floor(p)),b=min(a+1,size-1);
+   vec2 f=fract(p);
+   return mix(
+    mix(float(texelFetch(t,a,0)[channel]),
+        float(texelFetch(t,ivec2(b.x,a.y),0)[channel]),f.x),
+    mix(float(texelFetch(t,ivec2(a.x,b.y),0)[channel]),
+        float(texelFetch(t,b,0)[channel]),f.x),
+    f.y
+   );
   }
-  vec3 hlg(vec3 x){return mix(x*x/3.0,(exp((x-0.55991073)/0.17883277)+0.28466892)/12.0,step(vec3(0.5),x));}
-  vec3 pq(vec3 x){vec3 p=pow(max(x,0.0),vec3(1.0/78.84375));return 10000.0*pow(max(p-0.8359375,0.0)/(18.8515625-18.6875*p),vec3(1.0/0.1593017578125));}
+
+  vec3 hlg(vec3 x){
+   return mix(
+    x*x/3.0,
+    (exp((x-0.55991073)/0.17883277)+0.28466892)/12.0,
+    step(vec3(0.5),x)
+   );
+  }
+
+  vec3 pq(vec3 x){
+   vec3 p=pow(max(x,0.0),vec3(1.0/78.84375));
+   return 10000.0*pow(
+    max(p-0.8359375,0.0)/(18.8515625-18.6875*p),
+    vec3(1.0/0.1593017578125)
+   );
+  }
+
   void main(){
-   vec2 uv=gl_FragCoord.xy/vec2(os);if(flip==1)uv.x=1.0-uv.x;
+   vec2 uv=gl_FragCoord.xy/vec2(os);
+   if(flip==1)uv.x=1.0-uv.x;
    vec2 s=uv;
    if(rot==90)s=vec2(uv.y,1.0-uv.x);
    else if(rot==180)s=1.0-uv;
    else if(rot==270)s=vec2(1.0-uv.y,uv.x);
+
    float y=plane(yp,s*vec2(ys)-0.5,ys,0);
    float u=plane(up,s*vec2(cs)-0.5,cs,0);
-   float v=nv==1?plane(up,s*vec2(cs)-0.5,cs,1):plane(vp,s*vec2(cs)-0.5,cs,0);
+   float v=nv==1
+    ?plane(up,s*vec2(cs)-0.5,cs,1)
+    :plane(vp,s*vec2(cs)-0.5,cs,0);
+
    float stepSize=(maximum+1.0)/256.0;
-   if(full==1){y/=maximum;u=(u-(maximum+1.0)*0.5)/maximum;v=(v-(maximum+1.0)*0.5)/maximum;}
-   else{y=(y-16.0*stepSize)/(219.0*stepSize);u=(u-128.0*stepSize)/(224.0*stepSize);v=(v-128.0*stepSize)/(224.0*stepSize);}
-   float r=y+2.0*(1.0-kr)*v,b=y+2.0*(1.0-kb)*u;
+   if(full==1){
+    y/=maximum;
+    u=(u-(maximum+1.0)*0.5)/maximum;
+    v=(v-(maximum+1.0)*0.5)/maximum;
+   }else{
+    y=(y-16.0*stepSize)/(219.0*stepSize);
+    u=(u-128.0*stepSize)/(224.0*stepSize);
+    v=(v-128.0*stepSize)/(224.0*stepSize);
+   }
+
+   float r=y+2.0*(1.0-kr)*v;
+   float b=y+2.0*(1.0-kb)*u;
    vec3 rgb=clamp(vec3(r,(y-kr*r-kb*b)/(1.0-kr-kb),b),0.0,1.0);
+
    if(mode==1||mode==2){
     vec3 linear=mode==1?hlg(rgb):pq(rgb)/203.0;
-    linear=mat3(1.6605,-0.1246,-0.0182,-0.5876,1.1329,-0.1006,-0.0728,-0.0083,1.1187)*linear;
-    rgb=mode==1?clamp(-0.0532+1.0532*pow(clamp(linear*0.9963,0.0,1.0),vec3(1.0/2.742)),0.0,1.0):pow(clamp(linear,0.0,1.0),vec3(1.0/2.4));
+    linear=mat3(
+     1.6605,-0.1246,-0.0182,
+     -0.5876,1.1329,-0.1006,
+     -0.0728,-0.0083,1.1187
+    )*linear;
+    rgb=mode==1
+     ?clamp(-0.0532+1.0532*pow(
+       clamp(linear*0.9963,0.0,1.0),
+       vec3(1.0/2.742)),0.0,1.0)
+     :pow(clamp(linear,0.0,1.0),vec3(1.0/2.4));
    }else if(mode==3){
-    vec3 linear=mix(rgb/12.92,pow((rgb+0.055)/1.055,vec3(2.4)),step(vec3(0.04045),rgb));
-    rgb=mix(4.5*linear,1.099*pow(linear,vec3(0.45))-0.099,step(vec3(0.018),linear));
+    vec3 linear=mix(
+     rgb/12.92,
+     pow((rgb+0.055)/1.055,vec3(2.4)),
+     step(vec3(0.04045),rgb)
+    );
+    rgb=mix(
+     4.5*linear,
+     1.099*pow(linear,vec3(0.45))-0.099,
+     step(vec3(0.018),linear)
+    );
    }
    pixel=vec4(clamp(rgb,0.0,1.0),1);
   }`);
+
   this.resize=this.program(vertex,common+`
-  uniform sampler2D source;uniform int direction,limit;uniform float ratio;
-  float lanczos(float x){x=abs(x);if(x<0.00001)return 1.0;if(x>=3.0)return 0.0;float p=3.14159265359*x;return 3.0*sin(p)*sin(p/3.0)/(p*p);}
-  void main(){ivec2 f=ivec2(gl_FragCoord.xy);float center=(float(direction==0?f.x:f.y)+0.5)*ratio-0.5;int base=int(floor(center));vec3 sum=vec3(0);float weights=0.0;
-   for(int k=-6;k<=6;k++){int j=base+k;float weight=lanczos((float(j)-center)/ratio);int q=clamp(j,0,limit-1);sum+=weight*texelFetch(source,direction==0?ivec2(q,f.y):ivec2(f.x,q),0).rgb;weights+=weight;}
+  uniform sampler2D source;
+  uniform int direction,limit;
+  uniform float ratio;
+
+  float lanczos(float x){
+   x=abs(x);
+   if(x<0.00001)return 1.0;
+   if(x>=3.0)return 0.0;
+   float p=3.14159265359*x;
+   return 3.0*sin(p)*sin(p/3.0)/(p*p);
+  }
+
+  void main(){
+   ivec2 f=ivec2(gl_FragCoord.xy);
+   float center=(float(direction==0?f.x:f.y)+0.5)*ratio-0.5;
+   int base=int(floor(center));
+   vec3 sum=vec3(0);
+   float weights=0.0;
+   for(int k=-6;k<=6;k++){
+    int j=base+k;
+    float weight=lanczos((float(j)-center)/ratio);
+    int q=clamp(j,0,limit-1);
+    sum+=weight*texelFetch(
+     source,
+     direction==0?ivec2(q,f.y):ivec2(f.x,q),
+     0
+    ).rgb;
+    weights+=weight;
+   }
    pixel=vec4(clamp(sum/max(weights,0.00001),0.0,1.0),1);
   }`);
-  const packing=`uniform sampler2D source;float luma(vec3 c){return dot(c,vec3(0.2126,0.7152,0.0722));}`;
+
+  const packing=`
+  uniform sampler2D source;
+  float luma(vec3 c){return dot(c,vec3(0.2126,0.7152,0.0722));}
+  `;
+
   this.packY=this.program(vertex,common+packing+`
-  void main(){ivec2 p=ivec2(gl_FragCoord.xy);p.x*=4;vec4 y;for(int k=0;k<4;k++)y[k]=(16.0+219.0*luma(texelFetch(source,p+ivec2(k,0),0).rgb))/255.0;pixel=y;}`);
+  void main(){
+   ivec2 p=ivec2(gl_FragCoord.xy);
+   p.x*=4;
+   vec4 y;
+   for(int k=0;k<4;k++){
+    y[k]=(16.0+219.0*luma(
+     texelFetch(source,p+ivec2(k,0),0).rgb
+    ))/255.0;
+   }
+   pixel=y;
+  }`);
+
   this.packUV=this.program(vertex,common+packing+`
-  vec2 chroma(ivec2 p){vec3 rgb=(texelFetch(source,p,0).rgb+texelFetch(source,p+ivec2(1,0),0).rgb+texelFetch(source,p+ivec2(0,1),0).rgb+texelFetch(source,p+ivec2(1,1),0).rgb)*0.25;float y=luma(rgb);return (128.0+224.0*clamp(vec2((rgb.b-y)/1.8556,(rgb.r-y)/1.5748),-0.5,0.5))/255.0;}
-  void main(){ivec2 p=ivec2(gl_FragCoord.xy)*ivec2(4,2);pixel=vec4(chroma(p),chroma(p+ivec2(2,0)));}`);
-  this.planes=[this.texture(),this.texture(),this.texture()];
-  this.yTarget=this.target(w/4,h);this.uvTarget=this.target(w/4,h/2);
-  this.yBytes=new Uint8Array(w*h);this.uvBytes=new Uint8Array(w*h/2);this.i420=new Uint8Array(w*h*3/2);
- }
- program(vertex,fragment){
-  const g=this.gl,p=g.createProgram();this.resources.push(['program',p]);
-  for(const [type,source] of [[g.VERTEX_SHADER,vertex],[g.FRAGMENT_SHADER,fragment]]){
-   const s=g.createShader(type);g.shaderSource(s,source);g.compileShader(s);
-   if(!g.getShaderParameter(s,g.COMPILE_STATUS)){const error=g.getShaderInfoLog(s);g.deleteShader(s);throw Error('GPU shader: '+error)}
-   g.attachShader(p,s);g.deleteShader(s);
+  vec2 chroma(ivec2 p){
+   vec3 rgb=(
+    texelFetch(source,p,0).rgb+
+    texelFetch(source,p+ivec2(1,0),0).rgb+
+    texelFetch(source,p+ivec2(0,1),0).rgb+
+    texelFetch(source,p+ivec2(1,1),0).rgb
+   )*0.25;
+   float y=luma(rgb);
+   return (128.0+224.0*clamp(
+    vec2((rgb.b-y)/1.8556,(rgb.r-y)/1.5748),
+    -0.5,0.5
+   ))/255.0;
   }
-  g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))throw Error('GPU shader link failed.');return p;
+
+  void main(){
+   ivec2 p=ivec2(gl_FragCoord.xy)*ivec2(4,2);
+   pixel=vec4(chroma(p),chroma(p+ivec2(2,0)));
+  }`);
+
+  this.planes=[this.texture(),this.texture(),this.texture()];
+  this.yTarget=this.target(w/4,h);
+  this.uvTarget=this.target(w/4,h/2);
+  this.yBytes=new Uint8Array(w*h);
+  this.uvBytes=new Uint8Array(w*h/2);
+  this.i420=new Uint8Array(w*h*3/2);
  }
- texture(){const g=this.gl,t=g.createTexture();this.resources.push(['texture',t]);g.bindTexture(g.TEXTURE_2D,t);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.NEAREST);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MAG_FILTER,g.NEAREST);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_S,g.CLAMP_TO_EDGE);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE);return t}
- target(w,h){const g=this.gl,t=this.texture(),f=g.createFramebuffer();this.resources.push(['framebuffer',f]);g.texImage2D(g.TEXTURE_2D,0,g.RGBA8,w,h,0,g.RGBA,g.UNSIGNED_BYTE,null);g.bindFramebuffer(g.FRAMEBUFFER,f);g.framebufferTexture2D(g.FRAMEBUFFER,g.COLOR_ATTACHMENT0,g.TEXTURE_2D,t,0);if(g.checkFramebufferStatus(g.FRAMEBUFFER)!==g.FRAMEBUFFER_COMPLETE)throw Error('GPU texture allocation failed.');return {t,f,w,h}}
- uniform(p,name,type,...values){this.gl[type](this.gl.getUniformLocation(p,name),...values)}
- draw(p,target){const g=this.gl;g.useProgram(p);g.bindFramebuffer(g.FRAMEBUFFER,target.f);g.viewport(0,0,target.w,target.h);g.drawArrays(g.TRIANGLES,0,3)}
- bindSource(p,t){const g=this.gl;g.useProgram(p);g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,t);this.uniform(p,'source','uniform1i',0)}
+
+ program(vertex,fragment){
+  const g=this.gl,p=g.createProgram();
+  this.resources.push(['program',p]);
+  for(const [type,source] of [
+   [g.VERTEX_SHADER,vertex],
+   [g.FRAGMENT_SHADER,fragment]
+  ]){
+   const s=g.createShader(type);
+   g.shaderSource(s,source);
+   g.compileShader(s);
+   if(!g.getShaderParameter(s,g.COMPILE_STATUS)){
+    const error=g.getShaderInfoLog(s);
+    g.deleteShader(s);
+    throw Error('GPU shader: '+error);
+   }
+   g.attachShader(p,s);
+   g.deleteShader(s);
+  }
+  g.linkProgram(p);
+  if(!g.getProgramParameter(p,g.LINK_STATUS)){
+   throw Error('GPU shader link failed.');
+  }
+  return p;
+ }
+
+ texture(){
+  const g=this.gl,t=g.createTexture();
+  this.resources.push(['texture',t]);
+  g.bindTexture(g.TEXTURE_2D,t);
+  g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.NEAREST);
+  g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MAG_FILTER,g.NEAREST);
+  g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_S,g.CLAMP_TO_EDGE);
+  g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE);
+  return t;
+ }
+
+ target(w,h){
+  const g=this.gl,t=this.texture(),f=g.createFramebuffer();
+  this.resources.push(['framebuffer',f]);
+  g.texImage2D(g.TEXTURE_2D,0,g.RGBA8,w,h,0,g.RGBA,g.UNSIGNED_BYTE,null);
+  g.bindFramebuffer(g.FRAMEBUFFER,f);
+  g.framebufferTexture2D(
+   g.FRAMEBUFFER,g.COLOR_ATTACHMENT0,g.TEXTURE_2D,t,0
+  );
+  if(g.checkFramebufferStatus(g.FRAMEBUFFER)!==g.FRAMEBUFFER_COMPLETE){
+   throw Error('GPU texture allocation failed.');
+  }
+  return {t,f,w,h};
+ }
+
+ uniform(p,name,type,...values){
+  this.gl[type](this.gl.getUniformLocation(p,name),...values);
+ }
+
+ draw(p,target){
+  const g=this.gl;
+  g.useProgram(p);
+  g.bindFramebuffer(g.FRAMEBUFFER,target.f);
+  g.viewport(0,0,target.w,target.h);
+  g.drawArrays(g.TRIANGLES,0,3);
+ }
+
+ bindSource(p,t){
+  const g=this.gl;
+  g.useProgram(p);
+  g.activeTexture(g.TEXTURE0);
+  g.bindTexture(g.TEXTURE_2D,t);
+  this.uniform(p,'source','uniform1i',0);
+ }
+
  async frame(sample,metadata,timestamp,duration){
-  const g=this.gl;if(this.lost||g.isContextLost())throw Error('GPU context was lost. Retry a shorter clip.');
+  const g=this.gl;
+  if(this.lost||g.isContextLost()){
+   throw Error('GPU context was lost. Retry a shorter clip.');
+  }
   const frame=sample.toVideoFrame();
   try{
-   const formats={I420:[1,255,2,2],I420P10:[2,1023,2,2],I420P12:[2,4095,2,2],I422:[1,255,2,1],I422P10:[2,1023,2,1],I444:[1,255,1,1],I444P10:[2,1023,1,1],NV12:[1,255,2,2]};
+   const formats={
+    I420:[1,255,2,2],
+    I420P10:[2,1023,2,2],
+    I420P12:[2,4095,2,2],
+    I422:[1,255,2,1],
+    I422P10:[2,1023,2,1],
+    I444:[1,255,1,1],
+    I444P10:[2,1023,1,1],
+    NV12:[1,255,2,2]
+   };
    const format=formats[frame.format];
-   if(!format)throw Error('Fast colour conversion cannot read '+frame.format+' frames on this browser. Use v4 compatibility mode.');
-   const [bytes,maximum,subX,subY]=format,nv=frame.format==='NV12';
-   const width=frame.visibleRect.width,height=frame.visibleRect.height;
+   if(!format){
+    throw Error(
+     'Fast colour conversion cannot read '+frame.format+
+     ' frames on this browser. Use v4 compatibility mode.'
+    );
+   }
+   const [bytes,maximum,subX,subY]=format;
+   const nv=frame.format==='NV12';
+   const width=frame.visibleRect.width;
+   const height=frame.visibleRect.height;
    const cw=Math.ceil(width/subX),ch=Math.ceil(height/subY);
    const allocation=frame.allocationSize();
-   if(!this.raw||this.raw.byteLength!==allocation)this.raw=new Uint8Array(allocation);
+
+   if(!this.raw||this.raw.byteLength!==allocation){
+    this.raw=new Uint8Array(allocation);
+   }
    const layout=await frame.copyTo(this.raw);
+
    for(let plane=0;plane<(nv?2:3);plane++){
-    const pw=plane?cw:width,ph=plane?ch:height,channels=nv&&plane===1?2:1;
-    const l=layout[plane],length=l.stride*(ph-1)+pw*channels*bytes;
-    const data=bytes===2?new Uint16Array(this.raw.buffer,l.offset,length/2):new Uint8Array(this.raw.buffer,l.offset,length);
-    g.activeTexture(g.TEXTURE0+plane);g.bindTexture(g.TEXTURE_2D,this.planes[plane]);
-    g.pixelStorei(g.UNPACK_ALIGNMENT,1);g.pixelStorei(g.UNPACK_ROW_LENGTH,l.stride/bytes/channels);
-    g.texImage2D(g.TEXTURE_2D,0,bytes===2?(channels===2?g.RG16UI:g.R16UI):(channels===2?g.RG8UI:g.R8UI),pw,ph,0,channels===2?g.RG_INTEGER:g.RED_INTEGER,bytes===2?g.UNSIGNED_SHORT:g.UNSIGNED_BYTE,data);
+    const pw=plane?cw:width;
+    const ph=plane?ch:height;
+    const channels=nv&&plane===1?2:1;
+    const l=layout[plane];
+    const length=l.stride*(ph-1)+pw*channels*bytes;
+    const data=bytes===2
+     ?new Uint16Array(this.raw.buffer,l.offset,length/2)
+     :new Uint8Array(this.raw.buffer,l.offset,length);
+
+    g.activeTexture(g.TEXTURE0+plane);
+    g.bindTexture(g.TEXTURE_2D,this.planes[plane]);
+    g.pixelStorei(g.UNPACK_ALIGNMENT,1);
+    g.pixelStorei(g.UNPACK_ROW_LENGTH,l.stride/bytes/channels);
+    g.texImage2D(
+     g.TEXTURE_2D,0,
+     bytes===2
+      ?(channels===2?g.RG16UI:g.R16UI)
+      :(channels===2?g.RG8UI:g.R8UI),
+     pw,ph,0,
+     channels===2?g.RG_INTEGER:g.RED_INTEGER,
+     bytes===2?g.UNSIGNED_SHORT:g.UNSIGNED_BYTE,
+     data
+    );
     g.pixelStorei(g.UNPACK_ROW_LENGTH,0);
    }
-   if(nv){g.activeTexture(g.TEXTURE2);g.bindTexture(g.TEXTURE_2D,this.planes[1]);}
+
+   if(nv){
+    g.activeTexture(g.TEXTURE2);
+    g.bindTexture(g.TEXTURE_2D,this.planes[1]);
+   }
+
    const rotation=((sample.rotation||0)%360+360)%360;
    if(!this.rgb){
-    const rotatedW=rotation%180?height:width,rotatedH=rotation%180?width:height;
-    const ratio=Math.max(1,Math.min(2,rotatedW/this.w,rotatedH/this.h));
-    const iw=Math.round(this.w*ratio),ih=Math.round(this.h*ratio);
+    const rotatedW=rotation%180?height:width;
+    const rotatedH=rotation%180?width:height;
+    const ratio=Math.max(
+     1,Math.min(2,rotatedW/this.w,rotatedH/this.h)
+    );
+    const iw=Math.round(this.w*ratio);
+    const ih=Math.round(this.h*ratio);
     this.rgb=this.target(iw,ih);
-    if(iw!==this.w||ih!==this.h){this.horizontal=this.target(this.w,ih);this.final=this.target(this.w,this.h);}
+    if(iw!==this.w||ih!==this.h){
+     this.horizontal=this.target(this.w,ih);
+     this.final=this.target(this.w,this.h);
+    }
    }
-   // Texture allocation may have changed the active texture bindings.
-   for(let n=0;n<3;n++){g.activeTexture(g.TEXTURE0+n);g.bindTexture(g.TEXTURE_2D,this.planes[nv&&n===2?1:n]);}
-   const colour={matrix:metadata.matrix??frame.colorSpace.matrix,primaries:metadata.primaries??frame.colorSpace.primaries,transfer:metadata.transfer??frame.colorSpace.transfer,fullRange:metadata.fullRange??frame.colorSpace.fullRange??false};
+
+   // Texture allocation may have changed active bindings.
+   for(let n=0;n<3;n++){
+    g.activeTexture(g.TEXTURE0+n);
+    g.bindTexture(g.TEXTURE_2D,this.planes[nv&&n===2?1:n]);
+   }
+
+   const colour={
+    matrix:metadata.matrix??frame.colorSpace.matrix,
+    primaries:metadata.primaries??frame.colorSpace.primaries,
+    transfer:metadata.transfer??frame.colorSpace.transfer,
+    fullRange:metadata.fullRange??frame.colorSpace.fullRange??false
+   };
    const transfer=colour.transfer;
-   const mode=transfer==='hlg'?1:transfer==='pq'?2:transfer==='iec61966-2-1'?3:0;
-   if((mode===1||mode===2)&&colour.primaries!=='bt2020')throw Error('Unsupported HDR colour primaries. Use v4.');
-   if(mode===0&&colour.primaries==='bt2020')throw Error('BT.2020 SDR is not supported by this fast path. Use v4.');
-   const matrix={'bt709':[0.2126,0.0722],'bt2020-ncl':[0.2627,0.0593],smpte170m:[0.299,0.114],bt470bg:[0.299,0.114]}[colour.matrix||'bt709'];
-   if(!matrix)throw Error('Unsupported source colour matrix: '+colour.matrix);
-   const p=this.convert;g.useProgram(p);
-   this.uniform(p,'yp','uniform1i',0);this.uniform(p,'up','uniform1i',1);this.uniform(p,'vp','uniform1i',2);
-   this.uniform(p,'ys','uniform2i',width,height);this.uniform(p,'cs','uniform2i',cw,ch);this.uniform(p,'os','uniform2i',this.rgb.w,this.rgb.h);
-   this.uniform(p,'nv','uniform1i',nv?1:0);this.uniform(p,'rot','uniform1i',rotation);this.uniform(p,'flip','uniform1i',sample.flip?1:0);
-   this.uniform(p,'full','uniform1i',colour.fullRange?1:0);this.uniform(p,'mode','uniform1i',mode);
-   this.uniform(p,'maximum','uniform1f',maximum);this.uniform(p,'kr','uniform1f',matrix[0]);this.uniform(p,'kb','uniform1f',matrix[1]);
+   const mode=transfer==='hlg'?1
+    :transfer==='pq'?2
+    :transfer==='iec61966-2-1'?3:0;
+
+   if((mode===1||mode===2)&&colour.primaries!=='bt2020'){
+    throw Error('Unsupported HDR colour primaries. Use v4.');
+   }
+   if(mode===0&&colour.primaries==='bt2020'){
+    throw Error('BT.2020 SDR is not supported by this fast path. Use v4.');
+   }
+
+   const matrix={
+    bt709:[0.2126,0.0722],
+    'bt2020-ncl':[0.2627,0.0593],
+    smpte170m:[0.299,0.114],
+    bt470bg:[0.299,0.114]
+   }[colour.matrix||'bt709'];
+
+   if(!matrix){
+    throw Error('Unsupported source colour matrix: '+colour.matrix);
+   }
+
+   const p=this.convert;
+   g.useProgram(p);
+   this.uniform(p,'yp','uniform1i',0);
+   this.uniform(p,'up','uniform1i',1);
+   this.uniform(p,'vp','uniform1i',2);
+   this.uniform(p,'ys','uniform2i',width,height);
+   this.uniform(p,'cs','uniform2i',cw,ch);
+   this.uniform(p,'os','uniform2i',this.rgb.w,this.rgb.h);
+   this.uniform(p,'nv','uniform1i',nv?1:0);
+   this.uniform(p,'rot','uniform1i',rotation);
+   this.uniform(p,'flip','uniform1i',sample.flip?1:0);
+   this.uniform(p,'full','uniform1i',colour.fullRange?1:0);
+   this.uniform(p,'mode','uniform1i',mode);
+   this.uniform(p,'maximum','uniform1f',maximum);
+   this.uniform(p,'kr','uniform1f',matrix[0]);
+   this.uniform(p,'kb','uniform1f',matrix[1]);
    this.draw(p,this.rgb);
+
    let source=this.rgb.t;
    if(this.final){
-    const r=this.resize;this.bindSource(r,source);
-    this.uniform(r,'direction','uniform1i',0);this.uniform(r,'limit','uniform1i',this.rgb.w);this.uniform(r,'ratio','uniform1f',this.rgb.w/this.w);this.draw(r,this.horizontal);
-    this.bindSource(r,this.horizontal.t);this.uniform(r,'direction','uniform1i',1);this.uniform(r,'limit','uniform1i',this.rgb.h);this.uniform(r,'ratio','uniform1f',this.rgb.h/this.h);this.draw(r,this.final);source=this.final.t;
+    const r=this.resize;
+    this.bindSource(r,this.rgb.t);
+    this.uniform(r,'direction','uniform1i',0);
+    this.uniform(r,'limit','uniform1i',this.rgb.w);
+    this.uniform(r,'ratio','uniform1f',this.rgb.w/this.w);
+    this.draw(r,this.horizontal);
+
+    this.bindSource(r,this.horizontal.t);
+    this.uniform(r,'direction','uniform1i',1);
+    this.uniform(r,'limit','uniform1i',this.rgb.h);
+    this.uniform(r,'ratio','uniform1f',this.rgb.h/this.h);
+    this.draw(r,this.final);
+    source=this.final.t;
    }
-   this.bindSource(this.packY,source);this.draw(this.packY,this.yTarget);g.readPixels(0,0,this.w/4,this.h,g.RGBA,g.UNSIGNED_BYTE,this.yBytes);
-   this.bindSource(this.packUV,source);this.draw(this.packUV,this.uvTarget);g.readPixels(0,0,this.w/4,this.h/2,g.RGBA,g.UNSIGNED_BYTE,this.uvBytes);
-   if(g.getError()!==g.NO_ERROR)throw Error('GPU colour conversion failed.');
+
+   this.bindSource(this.packY,source);
+   this.draw(this.packY,this.yTarget);
+   g.readPixels(
+    0,0,this.w/4,this.h,g.RGBA,g.UNSIGNED_BYTE,this.yBytes
+   );
+   this.bindSource(this.packUV,source);
+   this.draw(this.packUV,this.uvTarget);
+   g.readPixels(
+    0,0,this.w/4,this.h/2,g.RGBA,g.UNSIGNED_BYTE,this.uvBytes
+   );
+
+   if(g.getError()!==g.NO_ERROR){
+    throw Error('GPU colour conversion failed.');
+   }
+
    this.i420.set(this.yBytes);
    const ySize=this.w*this.h,quarter=ySize/4;
-   for(let k=0;k<quarter;k++){this.i420[ySize+k]=this.uvBytes[k*2];this.i420[ySize+quarter+k]=this.uvBytes[k*2+1];}
-   return new VideoFrame(this.i420,{format:'I420',codedWidth:this.w,codedHeight:this.h,timestamp:Math.round(timestamp*1e6),duration:Math.max(1,Math.round(duration*1e6)),colorSpace:{primaries:'bt709',transfer:'bt709',matrix:'bt709',fullRange:false}});
-  }finally{frame.close()}
+   for(let k=0;k<quarter;k++){
+    this.i420[ySize+k]=this.uvBytes[k*2];
+    this.i420[ySize+quarter+k]=this.uvBytes[k*2+1];
+   }
+
+   return new VideoFrame(this.i420,{
+    format:'I420',
+    codedWidth:this.w,
+    codedHeight:this.h,
+    timestamp:Math.round(timestamp*1e6),
+    duration:Math.max(1,Math.round(duration*1e6)),
+    colorSpace:{
+     primaries:'bt709',
+     transfer:'bt709',
+     matrix:'bt709',
+     fullRange:false
+    }
+   });
+  }finally{
+   frame.close();
+  }
  }
- close(){const g=this.gl;for(const [type,item] of this.resources){if(type==='program')g.deleteProgram(item);else if(type==='texture')g.deleteTexture(item);else g.deleteFramebuffer(item)}this.resources=[];g.getExtension('WEBGL_lose_context')?.loseContext();this.raw=null;this.i420=null;this.yBytes=null;this.uvBytes=null}
+
+ close(){
+  const g=this.gl;
+  for(const [type,item] of this.resources){
+   if(type==='program')g.deleteProgram(item);
+   else if(type==='texture')g.deleteTexture(item);
+   else g.deleteFramebuffer(item);
+  }
+  this.resources=[];
+  g.getExtension('WEBGL_lose_context')?.loseContext();
+  this.raw=null;
+  this.i420=null;
+  this.yBytes=null;
+  this.uvBytes=null;
+ }
 }
 
 const $=id=>document.getElementById(id);
 const TARGET=9_500_000;
-let sourceFile=null,sourceURL=null,library=null,busy=false,cancelled=false,activeEncoder=null,activeOutput=null,parts=[],selectedURL=null,ff=null,wakeLock=null;
+let sourceFile=null;
+let sourceURL=null;
+let library=null;
+let busy=false;
+let cancelled=false;
+let activeEncoder=null;
+let activeOutput=null;
+let parts=[];
+let selectedURL=null;
+let ff=null;
+let wakeLock=null;
+
 const mb=n=>(n/1e6).toFixed(2)+' MB';
-function status(t,p){$('status').textContent=t;if(Number.isFinite(p))$('progress').value=Math.max(0,Math.min(1,p))}
-function guard(){if(cancelled)throw Error('Cancelled')}
 const tick=()=>new Promise(r=>setTimeout(r,0));
+
+function status(t,p){
+ $('status').textContent=t;
+ if(Number.isFinite(p)){
+  $('progress').value=Math.max(0,Math.min(1,p));
+ }
+}
+
+function guard(){
+ if(cancelled)throw Error('Cancelled');
+}
+
 async function media(){
  if(library)return library;
- for(const url of ['https://cdn.jsdelivr.net/npm/mediabunny@1.64.0/dist/bundles/mediabunny.cjs','https://unpkg.com/mediabunny@1.64.0/dist/bundles/mediabunny.cjs']){
-  try{await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=url;s.crossOrigin='anonymous';const timeout=setTimeout(()=>{s.remove();reject(Error('Library timed out'))},20000);s.onload=()=>{clearTimeout(timeout);resolve()};s.onerror=()=>{clearTimeout(timeout);s.remove();reject(Error('Library failed to load'))};document.head.appendChild(s)});if(window.Mediabunny)return library=window.Mediabunny}catch(e){}
+ const urls=[
+  'https://cdn.jsdelivr.net/npm/mediabunny@1.64.0/dist/bundles/mediabunny.cjs',
+  'https://unpkg.com/mediabunny@1.64.0/dist/bundles/mediabunny.cjs'
+ ];
+ for(const url of urls){
+  try{
+   await new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src=url;
+    s.crossOrigin='anonymous';
+    const timeout=setTimeout(()=>{
+     s.remove();
+     reject(Error('Library timed out'));
+    },20000);
+    s.onload=()=>{
+     clearTimeout(timeout);
+     resolve();
+    };
+    s.onerror=()=>{
+     clearTimeout(timeout);
+     s.remove();
+     reject(Error('Library failed to load'));
+    };
+    document.head.appendChild(s);
+   });
+   if(window.Mediabunny)return library=window.Mediabunny;
+  }catch(e){}
  }
  throw Error('Could not load media tools. Check internet/CDN access.');
 }
-function dimensions(w,h){const scale=Math.min(1,Number($('resolution').value)/Math.max(w,h));return {w:Math.max(4,Math.floor(w*scale/4)*4),h:Math.max(2,Math.floor(h*scale/2)*2)}}
-function budget(duration,audioRate){const available=TARGET*8*0.96/duration-audioRate;if(available<64000)throw Error('This clip is too long for the size budget. Select 15- or 30-second parts.');return Math.floor(Math.min(3800000,available)/1000)*1000}
-function splitPlan(duration){const length=Number($('split').value);let count=length?Math.ceil((duration-1e-6)/length):1;if(length&&count>1&&duration-(count-1)*length<0.25)count--;return Array.from({length:count},(_,index)=>({start:length?index*length:0,duration:index===count-1?duration-(length?index*length:0):length}))}
+
+function dimensions(w,h){
+ const scale=Math.min(
+  1,Number($('resolution').value)/Math.max(w,h)
+ );
+ return {
+  w:Math.max(4,Math.floor(w*scale/4)*4),
+  h:Math.max(2,Math.floor(h*scale/2)*2)
+ };
+}
+
+function budget(duration,audioRate){
+ const available=TARGET*8*0.96/duration-audioRate;
+ if(available<64000){
+  throw Error(
+   'This clip is too long for the size budget. Select 15- or 30-second parts.'
+  );
+ }
+ return Math.floor(Math.min(3800000,available)/1000)*1000;
+}
+
+function splitPlan(duration){
+ const length=Number($('split').value);
+ let count=length?Math.ceil((duration-1e-6)/length):1;
+ if(length&&count>1&&duration-(count-1)*length<0.25)count--;
+ return Array.from({length:count},(_,index)=>({
+  start:length?index*length:0,
+  duration:index===count-1
+   ?duration-(length?index*length:0)
+   :length
+ }));
+}
+
 async function encoderConfig(w,h,fps,rate){
  for(const acceleration of ['prefer-hardware','no-preference']){
-  for(const profile of ['6400','4d00','4200'])for(const level of ['28','2a','33']){
-   const config={codec:'avc1.'+profile+level,width:w,height:h,bitrate:rate,framerate:fps,bitrateMode:'variable',latencyMode:'quality',hardwareAcceleration:acceleration,avc:{format:'avc'}};
-   try{if((await VideoEncoder.isConfigSupported(config)).supported)return config}catch(e){}
+  for(const profile of ['6400','4d00','4200']){
+   for(const level of ['28','2a','33']){
+    const config={
+     codec:'avc1.'+profile+level,
+     width:w,
+     height:h,
+     bitrate:rate,
+     framerate:fps,
+     bitrateMode:'variable',
+     latencyMode:'quality',
+     hardwareAcceleration:acceleration,
+     avc:{format:'avc'}
+    };
+    try{
+     if((await VideoEncoder.isConfigSupported(config)).supported){
+      return config;
+     }
+    }catch(e){}
+   }
   }
  }
- throw Error('This browser cannot encode H.264 at the selected dimensions. Try 720p or v4.');
+ throw Error(
+  'This browser cannot encode H.264 at the selected dimensions. Try 720p or v4.'
+ );
 }
+
 async function copyAudio(M,track,source,start,end){
  if(!track)return;
- const sink=new M.EncodedPacketSink(track),first=await sink.getPacket(start)||await sink.getFirstPacket();
+ const sink=new M.EncodedPacketSink(track);
+ const first=await sink.getPacket(start)||await sink.getFirstPacket();
  if(!first)throw Error('Audio track contains no packets.');
- const config=await track.getDecoderConfig();let sent=false;
+ const config=await track.getDecoderConfig();
+ let sent=false;
+
  for await(const packet of sink.packets(first)){
-  guard();if(packet.timestamp>=end)break;
+  guard();
+  if(packet.timestamp>=end)break;
   if(packet.timestamp+packet.duration<=start)continue;
-  const begin=Math.max(start,packet.timestamp),finish=Math.min(end,packet.timestamp+packet.duration);
+  const begin=Math.max(start,packet.timestamp);
+  const finish=Math.min(end,packet.timestamp+packet.duration);
   if(finish<=begin)continue;
-  await source.add(packet.clone({timestamp:begin-start,duration:finish-begin}),sent?undefined:{decoderConfig:config});sent=true;
+  await source.add(
+   packet.clone({
+    timestamp:begin-start,
+    duration:finish-begin
+   }),
+   sent?undefined:{decoderConfig:config}
+  );
+  sent=true;
  }
  source.close();
 }
+
 async function nativePart(M,track,audio,colour,plan,dims,fps,rate){
- guard();const output=new M.Output({format:new M.Mp4OutputFormat({fastStart:'in-memory'}),target:new M.BufferTarget()});
+ guard();
+ const output=new M.Output({
+  format:new M.Mp4OutputFormat({fastStart:'in-memory'}),
+  target:new M.BufferTarget()
+ });
  activeOutput=output;
- const videoSource=new M.EncodedVideoPacketSource('avc');output.addVideoTrack(videoSource,{frameRate:fps});
- const audioSource=audio?new M.EncodedAudioPacketSource('aac'):null;if(audioSource)output.addAudioTrack(audioSource);
+
+ const videoSource=new M.EncodedVideoPacketSource('avc');
+ output.addVideoTrack(videoSource,{frameRate:fps});
+ const audioSource=audio?new M.EncodedAudioPacketSource('aac'):null;
+ if(audioSource)output.addAudioTrack(audioSource);
  const config=await encoderConfig(dims.w,dims.h,fps,rate);
- let gpu=null,encoder=null,mux=Promise.resolve(),failure=null,encodedBytes=0;
+
+ let gpu=null;
+ let encoder=null;
+ let mux=Promise.resolve();
+ let failure=null;
+ let encodedBytes=0;
+
  try{
   gpu=new StatusGPU(dims.w,dims.h);
   await output.start();
-  encoder=new VideoEncoder({output:(chunk,meta)=>{
-   encodedBytes+=chunk.byteLength;
-   if(encodedBytes>160_000_000){failure=Error('Intermediate output is too large for this browser. Select shorter parts.');return}
-   mux=mux.then(()=>videoSource.add(M.EncodedPacket.fromEncodedChunk(chunk),meta)).catch(e=>{failure=e});
-  },error:e=>{failure=e}});
-  activeEncoder=encoder;encoder.configure(config);
-  await copyAudio(M,audio,audioSource,plan.start,plan.start+plan.duration);
+
+  encoder=new VideoEncoder({
+   output:(chunk,meta)=>{
+    encodedBytes+=chunk.byteLength;
+    if(encodedBytes>160_000_000){
+     failure=Error(
+      'Intermediate output is too large for this browser. Select shorter parts.'
+     );
+     return;
+    }
+    mux=mux.then(()=>
+     videoSource.add(M.EncodedPacket.fromEncodedChunk(chunk),meta)
+    ).catch(e=>{failure=e});
+   },
+   error:e=>{failure=e}
+  });
+  activeEncoder=encoder;
+  encoder.configure(config);
+
+  await copyAudio(
+   M,audio,audioSource,plan.start,plan.start+plan.duration
+  );
+
   const count=Math.max(1,Math.ceil(plan.duration*fps-1e-6));
-  function* times(){for(let n=0;n<count;n++)yield plan.start+n/fps}
-  const sink=new M.VideoSampleSink(track,{hardwareAcceleration:'no-preference'});
+  function* times(){
+   for(let n=0;n<count;n++)yield plan.start+n/fps;
+  }
+
+  const sink=new M.VideoSampleSink(track,{
+   hardwareAcceleration:'no-preference'
+  });
   let index=0,lastYield=performance.now();
+
   for await(const sample of sink.samplesAtTimestamps(times())){
-   if(cancelled||failure){sample?.close();guard();throw failure}
-   if(!sample)throw Error('A requested video frame could not be decoded.');
+   if(cancelled||failure){
+    sample?.close();
+    guard();
+    throw failure;
+   }
+   if(!sample){
+    throw Error('A requested video frame could not be decoded.');
+   }
+
    let frame=null;
    try{
-    const timestamp=index/fps,duration=Math.min(1/fps,plan.duration-timestamp);
+    const timestamp=index/fps;
+    const duration=Math.min(1/fps,plan.duration-timestamp);
     frame=await gpu.frame(sample,colour,timestamp,duration);
     encoder.encode(frame,{keyFrame:index%250===0});
-   }finally{frame?.close();sample.close()}
+   }finally{
+    frame?.close();
+    sample.close();
+   }
    index++;
-   while(encoder.encodeQueueSize>4){guard();if(failure)throw failure;await tick()}
-   await mux;if(failure)throw failure;
-   if(performance.now()-lastYield>120){status(`Preparing complete video frames · ${index}/${count}`,index/count*0.80);await tick();lastYield=performance.now()}
+
+   while(encoder.encodeQueueSize>4){
+    guard();
+    if(failure)throw failure;
+    await tick();
+   }
+   await mux;
+   if(failure)throw failure;
+
+   if(performance.now()-lastYield>120){
+    status(
+     `Preparing complete video frames · ${index}/${count}`,
+     index/count*0.80
+    );
+    await tick();
+    lastYield=performance.now();
+   }
   }
-  guard();await encoder.flush();await mux;if(failure)throw failure;
-  videoSource.close();await output.finalize();guard();
+
+  guard();
+  await encoder.flush();
+  await mux;
+  if(failure)throw failure;
+  videoSource.close();
+  await output.finalize();
+  guard();
+
   const blob=new Blob([output.target.buffer],{type:'video/mp4'});
-  return {blob,codec:config.codec,acceleration:config.hardwareAcceleration};
+  return {
+   blob,
+   codec:config.codec,
+   acceleration:config.hardwareAcceleration
+  };
  }finally{
-  activeEncoder=null;activeOutput=null;
+  activeEncoder=null;
+  activeOutput=null;
   if(encoder&&encoder.state!=='closed')encoder.close();
   try{await output.cancel()}catch(e){}
   gpu?.close();
  }
 }
+
 async function verify(M,blob,dims,duration,fps,hasAudio,checkSize=true){
- if(checkSize&&blob.size>TARGET)throw Error('Export exceeds the 9.5 MB target.');
- const input=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(blob)});
+ if(checkSize&&blob.size>TARGET){
+  throw Error('Export exceeds the 9.5 MB target.');
+ }
+ const input=new M.Input({
+  formats:M.ALL_FORMATS,
+  source:new M.BlobSource(blob)
+ });
  try{
-  const track=await input.getPrimaryVideoTrack();if(!track||await track.getCodec()!=='avc')throw Error('Export is not H.264.');
-  const w=await track.getDisplayWidth(),h=await track.getDisplayHeight(),d=await input.computeDuration();
-  if(w!==dims.w||h!==dims.h||!Number.isFinite(d)||Math.abs(d-duration)>0.3)throw Error('Export dimensions or duration failed verification.');
+  const track=await input.getPrimaryVideoTrack();
+  if(!track||await track.getCodec()!=='avc'){
+   throw Error('Export is not H.264.');
+  }
+  const w=await track.getDisplayWidth();
+  const h=await track.getDisplayHeight();
+  const d=await input.computeDuration();
+  if(
+   w!==dims.w||h!==dims.h||
+   !Number.isFinite(d)||Math.abs(d-duration)>0.3
+  ){
+   throw Error('Export dimensions or duration failed verification.');
+  }
   const colour=await track.getColorSpace();
-  if(colour.primaries!=='bt709'||colour.transfer!=='bt709'||colour.matrix!=='bt709'||colour.fullRange!==false)throw Error('Export colour metadata is not limited-range BT.709. Try x264 finishing.');
-  if(hasAudio&&!await input.getPrimaryAudioTrack())throw Error('Audio was lost during conversion.');
-  const stats=await track.computePacketStats();if(fps>=20&&stats.averagePacketRate<fps*0.90)throw Error('Export frame rate is too low.');
+  if(
+   colour.primaries!=='bt709'||
+   colour.transfer!=='bt709'||
+   colour.matrix!=='bt709'||
+   colour.fullRange!==false
+  ){
+   throw Error(
+    'Export colour metadata is not limited-range BT.709. Try x264 finishing.'
+   );
+  }
+  if(hasAudio&&!await input.getPrimaryAudioTrack()){
+   throw Error('Audio was lost during conversion.');
+  }
+  const stats=await track.computePacketStats();
+  if(fps>=20&&stats.averagePacketRate<fps*0.90){
+   throw Error('Export frame rate is too low.');
+  }
   return {w,h,duration:d,fps:stats.averagePacketRate};
- }finally{input.dispose()}
+ }finally{
+  input.dispose();
+ }
 }
+
 async function loadFF(){
  if(ff)return ff;
  status('Loading optional x264 finishing engine…',0.8);
  const base='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
- const assets=await Promise.all(['ffmpeg-core.js','ffmpeg-core.wasm'].map(async(name,index)=>{const response=await fetch(base+'/'+name);if(!response.ok)throw Error('Could not download x264 engine.');return URL.createObjectURL(new Blob([await response.arrayBuffer()],{type:index?'application/wasm':'text/javascript'}))}));
- if(cancelled){assets.forEach(URL.revokeObjectURL);guard()}
- const code=`let core;self.onmessage=async e=>{const {id,type,data}=e.data;try{let result;if(type==='load'){importScripts(data.js);core=await self.createFFmpegCore({mainScriptUrlOrBlob:data.js+'#'+btoa(JSON.stringify({wasmURL:data.wasm}))});core.setLogger(x=>self.postMessage({log:x.message}));core.setProgress(x=>self.postMessage({progress:x.progress}));result=true}else if(type==='write'){core.FS.writeFile(data.name,new Uint8Array(data.buffer));result=true}else if(type==='exec'){core.setTimeout(-1);core.exec(...data.args);result=core.ret;core.reset()}else if(type==='read'){result=core.FS.readFile(data.name);self.postMessage({id,result},[result.buffer]);return}else if(type==='remove'){try{core.FS.unlink(data.name)}catch(e){}result=true}self.postMessage({id,result})}catch(error){self.postMessage({id,error:error.message})}}`;
- const url=URL.createObjectURL(new Blob([code],{type:'text/javascript'})),worker=new Worker(url);
- let sequence=0,closed=false;const pending=new Map();const logs=[];
- const engine={logs,call(type,data={},transfer=[]){if(closed)return Promise.reject(Error('Encoder was stopped'));return new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject});worker.postMessage({id,type,data},transfer)})},stop(){if(closed)return;closed=true;worker.terminate();for(const p of pending.values())p.reject(Error('Encoder stopped'));pending.clear();URL.revokeObjectURL(url);assets.forEach(URL.revokeObjectURL)}};
- worker.onmessage=e=>{const d=e.data;if(d.log){logs.push(d.log);if(logs.length>30)logs.shift();return}if(typeof d.progress==='number'){if(!cancelled)status('x264 finishing · '+Math.round(d.progress*100)+'%',0.8+Math.min(1,Math.max(0,d.progress))*0.18);return}const p=pending.get(d.id);if(p){pending.delete(d.id);d.error?p.reject(Error(d.error)):p.resolve(d.result)}};
- worker.onerror=e=>{engine.stop();if(ff===engine)ff=null};
+ const assets=await Promise.all(
+  ['ffmpeg-core.js','ffmpeg-core.wasm'].map(async(name,index)=>{
+   const response=await fetch(base+'/'+name);
+   if(!response.ok)throw Error('Could not download x264 engine.');
+   return URL.createObjectURL(new Blob(
+    [await response.arrayBuffer()],
+    {type:index?'application/wasm':'text/javascript'}
+   ));
+  })
+ );
+ if(cancelled){
+  assets.forEach(URL.revokeObjectURL);
+  guard();
+ }
+
+ const code=`
+ let core;
+ self.onmessage=async e=>{
+  const {id,type,data}=e.data;
+  try{
+   let result;
+   if(type==='load'){
+    importScripts(data.js);
+    core=await self.createFFmpegCore({
+     mainScriptUrlOrBlob:data.js+'#'+btoa(
+      JSON.stringify({wasmURL:data.wasm})
+     )
+    });
+    core.setLogger(x=>self.postMessage({log:x.message}));
+    core.setProgress(x=>self.postMessage({progress:x.progress}));
+    result=true;
+   }else if(type==='write'){
+    core.FS.writeFile(data.name,new Uint8Array(data.buffer));
+    result=true;
+   }else if(type==='exec'){
+    core.setTimeout(-1);
+    core.exec(...data.args);
+    result=core.ret;
+    core.reset();
+   }else if(type==='read'){
+    result=core.FS.readFile(data.name);
+    self.postMessage({id,result},[result.buffer]);
+    return;
+   }else if(type==='remove'){
+    try{core.FS.unlink(data.name)}catch(e){}
+    result=true;
+   }
+   self.postMessage({id,result});
+  }catch(error){
+   self.postMessage({id,error:error.message});
+  }
+ };`;
+
+ const url=URL.createObjectURL(new Blob([code],{
+  type:'text/javascript'
+ }));
+ const worker=new Worker(url);
+ let sequence=0,closed=false;
+ const pending=new Map();
+ const logs=[];
+
+ const engine={
+  logs,
+  call(type,data={},transfer=[]){
+   if(closed)return Promise.reject(Error('Encoder was stopped'));
+   return new Promise((resolve,reject)=>{
+    const id=++sequence;
+    pending.set(id,{resolve,reject});
+    worker.postMessage({id,type,data},transfer);
+   });
+  },
+  stop(){
+   if(closed)return;
+   closed=true;
+   worker.terminate();
+   for(const p of pending.values())p.reject(Error('Encoder stopped'));
+   pending.clear();
+   URL.revokeObjectURL(url);
+   assets.forEach(URL.revokeObjectURL);
+  }
+ };
+
+ worker.onmessage=e=>{
+  const d=e.data;
+  if(d.log){
+   logs.push(d.log);
+   if(logs.length>30)logs.shift();
+   return;
+  }
+  if(typeof d.progress==='number'){
+   if(!cancelled){
+    status(
+     'x264 finishing · '+Math.round(d.progress*100)+'%',
+     0.8+Math.min(1,Math.max(0,d.progress))*0.18
+    );
+   }
+   return;
+  }
+  const p=pending.get(d.id);
+  if(p){
+   pending.delete(d.id);
+   d.error?p.reject(Error(d.error)):p.resolve(d.result);
+  }
+ };
+
+ worker.onerror=e=>{
+  engine.stop();
+  if(ff===engine)ff=null;
+ };
  ff=engine;
- try{await engine.call('load',{js:assets[0],wasm:assets[1]});guard();return engine}catch(e){engine.stop();if(ff===engine)ff=null;throw e}
+
+ try{
+  await engine.call('load',{js:assets[0],wasm:assets[1]});
+  guard();
+  return engine;
+ }catch(e){
+  engine.stop();
+  if(ff===engine)ff=null;
+  throw e;
+ }
 }
+
 async function finishX264(blob,rate,hasAudio){
- const engine=await loadFF();guard();
- const buffer=await blob.arrayBuffer();guard();await engine.call('write',{name:'input.mp4',buffer},[buffer]);
+ const engine=await loadFF();
+ guard();
+ const buffer=await blob.arrayBuffer();
+ guard();
+ await engine.call('write',{name:'input.mp4',buffer},[buffer]);
+
  try{
-  const args=['-i','input.mp4','-map','0:v:0','-c:v','libx264','-preset',$('preset').value,'-b:v',String(rate),'-maxrate',String(rate),'-bufsize',String(Math.round(rate*2/3)),'-profile:v','high','-g','250','-bf','3','-pix_fmt','yuv420p','-color_range','tv','-colorspace','bt709','-color_primaries','bt709','-color_trc','bt709'];
-  if(hasAudio)args.push('-map','0:a:0?','-c:a','aac','-b:a','128k','-ar','44100','-ac','2');else args.push('-an');
-  args.push('-map_metadata','-1','-map_chapters','-1','-movflags','+faststart','-y','output.mp4');
-  const code=await engine.call('exec',{args});guard();if(code!==0)throw Error('x264 failed: '+engine.logs.slice(-4).join(' '));
-  const bytes=await engine.call('read',{name:'output.mp4'});return new Blob([bytes],{type:'video/mp4'});
- }finally{try{await engine.call('remove',{name:'input.mp4'});await engine.call('remove',{name:'output.mp4'})}catch(e){}}
+  const args=[
+   '-i','input.mp4',
+   '-map','0:v:0',
+   '-c:v','libx264',
+   '-preset',$('preset').value,
+   '-b:v',String(rate),
+   '-maxrate',String(rate),
+   '-bufsize',String(Math.round(rate*2/3)),
+   '-profile:v','high',
+   '-g','250',
+   '-bf','3',
+   '-pix_fmt','yuv420p',
+   '-color_range','tv',
+   '-colorspace','bt709',
+   '-color_primaries','bt709',
+   '-color_trc','bt709'
+  ];
+  if(hasAudio){
+   args.push(
+    '-map','0:a:0?',
+    '-c:a','aac',
+    '-b:a','128k',
+    '-ar','44100',
+    '-ac','2'
+   );
+  }else{
+   args.push('-an');
+  }
+  args.push(
+   '-map_metadata','-1',
+   '-map_chapters','-1',
+   '-movflags','+faststart',
+   '-y','output.mp4'
+  );
+
+  const code=await engine.call('exec',{args});
+  guard();
+  if(code!==0){
+   throw Error('x264 failed: '+engine.logs.slice(-4).join(' '));
+  }
+  const bytes=await engine.call('read',{name:'output.mp4'});
+  return new Blob([bytes],{type:'video/mp4'});
+ }finally{
+  try{
+   await engine.call('remove',{name:'input.mp4'});
+   await engine.call('remove',{name:'output.mp4'});
+  }catch(e){}
+ }
 }
+
 async function video(){
- const M=await media();guard();
- if(!window.VideoEncoder||!window.VideoDecoder||!window.VideoFrame)throw Error('WebCodecs is unavailable. Open this page over HTTPS in a supported browser, or use v4.');
- const input=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(sourceFile,{maxCacheSize:8*1024*1024})});
+ const M=await media();
+ guard();
+
+ if(!window.VideoEncoder||!window.VideoDecoder||!window.VideoFrame){
+  throw Error(
+   'WebCodecs is unavailable. Open this page over HTTPS in a supported browser, or use v4.'
+  );
+ }
+ const input=new M.Input({
+  formats:M.ALL_FORMATS,
+  source:new M.BlobSource(sourceFile,{maxCacheSize:8*1024*1024})
+ });
+
  try{
-  const track=await input.getPrimaryVideoTrack();if(!track)throw Error('No readable video track.');
-  if(!await track.canDecode())throw Error('This browser cannot decode the source codec through WebCodecs. Try Safari on the iPhone for HEVC, or use v4.');
-  const colour=await track.getColorSpace(),first=Math.max(0,await track.getFirstTimestamp()),last=await track.computeDuration();
-  const duration=last-first;if(!Number.isFinite(duration)||duration<=0)throw Error('Invalid source duration.');
-  let fps=(await track.computeFrameRateMetrics()).bestGuessFrameRate||30;fps=Math.min(30,fps);
-  const dims=dimensions(await track.getDisplayWidth(),await track.getDisplayHeight());
+  const track=await input.getPrimaryVideoTrack();
+  if(!track)throw Error('No readable video track.');
+
+  if(!await track.canDecode()){
+   throw Error(
+    'This browser cannot decode the source codec through WebCodecs. Try Safari on the iPhone for HEVC, or use v4.'
+   );
+  }
+
+  const colour=await track.getColorSpace();
+  const first=Math.max(0,await track.getFirstTimestamp());
+  const last=await track.computeDuration();
+  const duration=last-first;
+  if(!Number.isFinite(duration)||duration<=0){
+   throw Error('Invalid source duration.');
+  }
+
+  let fps=(await track.computeFrameRateMetrics()).bestGuessFrameRate||30;
+  fps=Math.min(30,fps);
+  const dims=dimensions(
+   await track.getDisplayWidth(),
+   await track.getDisplayHeight()
+  );
+
   const audio=$('audio').checked?await input.getPrimaryAudioTrack():null;
-  if(audio&&await audio.getCodec()!=='aac')throw Error('This fast path needs AAC audio. Turn off audio or use v4 to convert this source.');
+  if(audio&&await audio.getCodec()!=='aac'){
+   throw Error(
+    'This fast path needs AAC audio. Turn off audio or use v4 to convert this source.'
+   );
+  }
+
   const hybrid=$('engine').value==='hybrid';
-  const audioRate=audio?(hybrid?128000:Math.max(128000,(await audio.getAverageBitrate())||(await audio.getBitrate())||256000)):0;
+  const audioRate=audio
+   ?(hybrid?128000:Math.max(
+     128000,
+     (await audio.getAverageBitrate())||
+     (await audio.getBitrate())||
+     256000
+    ))
+   :0;
+
   const plan=splitPlan(duration);
-  // Check every size budget before starting expensive processing.
   const rates=plan.map(p=>budget(p.duration,audioRate));
+
   for(let index=0;index<plan.length;index++){
-   guard();const part=plan[index],absolute={start:first+part.start,duration:part.duration};
+   guard();
+   const part=plan[index];
+   const absolute={
+    start:first+part.start,
+    duration:part.duration
+   };
    let rate=rates[index],native=null,blob=null;
    status(`Part ${index+1}/${plan.length} · preparing…`,0);
+
    for(let attempt=0;attempt<2;attempt++){
     guard();
     if(!hybrid||!native){
-     const preparationRate=hybrid?Math.max(rate*2,Math.min(20000000,96_000_000*8/part.duration)):rate;
-     native=await nativePart(M,track,audio,colour,absolute,dims,fps,preparationRate);
-     await verify(M,native.blob,dims,part.duration,fps,!!audio,false);
+     const preparationRate=hybrid
+      ?Math.max(
+       rate*2,
+       Math.min(20000000,96_000_000*8/part.duration)
+      )
+      :rate;
+
+     native=await nativePart(
+      M,track,audio,colour,absolute,dims,fps,preparationRate
+     );
+     await verify(
+      M,native.blob,dims,part.duration,fps,!!audio,false
+     );
     }
-    blob=hybrid?await finishX264(native.blob,rate,!!audio):native.blob;
+
+    blob=hybrid
+     ?await finishX264(native.blob,rate,!!audio)
+     :native.blob;
+
     if(blob.size<=TARGET)break;
-    if(attempt===1)throw Error('Output still exceeds 9.5 MB. Use shorter parts or 720p.');
+    if(attempt===1){
+     throw Error(
+      'Output still exceeds 9.5 MB. Use shorter parts or 720p.'
+     );
+    }
+
     rate=Math.floor(rate*(TARGET/blob.size)*0.88/1000)*1000;
-    if(rate<64000)throw Error('The size budget is too low. Select shorter parts.');
+    if(rate<64000){
+     throw Error('The size budget is too low. Select shorter parts.');
+    }
     status('Size check: retrying at a lower bitrate…',0);
    }
-   guard();const info=await verify(M,blob,dims,part.duration,fps,!!audio);
-   const name=sourceFile.name.replace(/\.[^.]+$/,'')+'_clearsend_v5'+(plan.length>1?'_part_'+String(index+1).padStart(2,'0'):'')+'.mp4';
-   parts.push({blob,name,meta:`${dims.w} × ${dims.h} · ${info.fps.toFixed(2)} FPS · ${mb(blob.size)} · ${hybrid?'GPU + x264':'GPU + browser H.264'} · size verified`,kind:'video'});
-   addPart(parts.length-1);native=null;
+
+   guard();
+   const info=await verify(
+    M,blob,dims,part.duration,fps,!!audio
+   );
+   const name=sourceFile.name.replace(/\.[^.]+$/,'')+
+    '_clearsend_v5'+
+    (plan.length>1?'_part_'+String(index+1).padStart(2,'0'):'')+
+    '.mp4';
+
+   parts.push({
+    blob,
+    name,
+    meta:
+     `${dims.w} × ${dims.h} · ${info.fps.toFixed(2)} FPS · `+
+     `${mb(blob.size)} · `+
+     `${hybrid?'GPU + x264':'GPU + browser H.264'} · size verified`,
+    kind:'video'
+   });
+   addPart(parts.length-1);
+   native=null;
   }
- }finally{input.dispose()}
+ }finally{
+  input.dispose();
+ }
 }
+
 async function photo(){
- const bitmap=await createImageBitmap(sourceFile,{imageOrientation:'from-image'});
+ const bitmap=await createImageBitmap(sourceFile,{
+  imageOrientation:'from-image'
+ });
  try{
-  if(bitmap.width*bitmap.height>80e6)throw Error('Photo is too large for browser pixel processing.');
+  if(bitmap.width*bitmap.height>80e6){
+   throw Error('Photo is too large for browser pixel processing.');
+  }
   const factor=Math.min(1,1920/Math.max(bitmap.width,bitmap.height));
-  const w=Math.round(bitmap.width*factor),h=Math.round(bitmap.height*factor);
+  const w=Math.round(bitmap.width*factor);
+  const h=Math.round(bitmap.height*factor);
   let source=bitmap,iw=bitmap.width,ih=bitmap.height;
-  while(Math.max(iw/w,ih/h)>2.1){const c=document.createElement('canvas');c.width=Math.max(w,Math.round(iw/2));c.height=Math.max(h,Math.round(ih/2));const x=c.getContext('2d',{alpha:false});x.fillStyle='white';x.fillRect(0,0,c.width,c.height);x.imageSmoothingQuality='high';x.drawImage(source,0,0,c.width,c.height);source=c;iw=c.width;ih=c.height;}
-  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-  const ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:true});ctx.fillStyle='white';ctx.fillRect(0,0,w,h);ctx.imageSmoothingQuality='high';ctx.drawImage(source,0,0,w,h);
-  const soft=document.createElement('canvas');soft.width=w;soft.height=h;const bx=soft.getContext('2d',{willReadFrequently:true});bx.filter='blur(0.85px)';bx.drawImage(canvas,0,0);
-  const original=ctx.getImageData(0,0,w,h),blur=bx.getImageData(0,0,w,h);
-  for(let n=0;n<original.data.length;n+=4)for(let c=0;c<3;c++)original.data[n+c]=Math.max(0,Math.min(255,original.data[n+c]+0.22*Math.max(-28,Math.min(28,original.data[n+c]-blur.data[n+c]))));
+
+  while(Math.max(iw/w,ih/h)>2.1){
+   const c=document.createElement('canvas');
+   c.width=Math.max(w,Math.round(iw/2));
+   c.height=Math.max(h,Math.round(ih/2));
+   const x=c.getContext('2d',{alpha:false});
+   x.fillStyle='white';
+   x.fillRect(0,0,c.width,c.height);
+   x.imageSmoothingQuality='high';
+   x.drawImage(source,0,0,c.width,c.height);
+   source=c;
+   iw=c.width;
+   ih=c.height;
+  }
+
+  const canvas=document.createElement('canvas');
+  canvas.width=w;
+  canvas.height=h;
+  const ctx=canvas.getContext('2d',{
+   alpha:false,
+   willReadFrequently:true
+  });
+  ctx.fillStyle='white';
+  ctx.fillRect(0,0,w,h);
+  ctx.imageSmoothingQuality='high';
+  ctx.drawImage(source,0,0,w,h);
+
+  const soft=document.createElement('canvas');
+  soft.width=w;
+  soft.height=h;
+  const bx=soft.getContext('2d',{willReadFrequently:true});
+  bx.filter='blur(0.85px)';
+  bx.drawImage(canvas,0,0);
+
+  const original=ctx.getImageData(0,0,w,h);
+  const blur=bx.getImageData(0,0,w,h);
+  for(let n=0;n<original.data.length;n+=4){
+   for(let c=0;c<3;c++){
+    original.data[n+c]=Math.max(0,Math.min(
+     255,
+     original.data[n+c]+0.22*Math.max(-28,Math.min(
+      28,original.data[n+c]-blur.data[n+c]
+     ))
+    ));
+   }
+  }
   ctx.putImageData(original,0,0);
-  const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Photo export failed')),'image/jpeg',0.93));guard();
-  parts.push({blob,name:sourceFile.name.replace(/\.[^.]+$/,'')+'_clearsend.jpg',kind:'image',meta:`${w} × ${h} · ${mb(blob.size)} · JPEG 93% · gentle sharpening`});addPart(0);
- }finally{bitmap.close()}
+
+  const blob=await new Promise((resolve,reject)=>
+   canvas.toBlob(
+    b=>b?resolve(b):reject(Error('Photo export failed')),
+    'image/jpeg',
+    0.93
+   )
+  );
+  guard();
+
+  parts.push({
+   blob,
+   name:sourceFile.name.replace(/\.[^.]+$/,'')+'_clearsend.jpg',
+   kind:'image',
+   meta:`${w} × ${h} · ${mb(blob.size)} · JPEG 93% · gentle sharpening`
+  });
+  addPart(0);
+ }finally{
+  bitmap.close();
+ }
 }
-function clearResults(){if(selectedURL)URL.revokeObjectURL(selectedURL);selectedURL=null;parts=[];$('parts').replaceChildren();$('result').hidden=true;$('outVideo').pause();$('outVideo').removeAttribute('src');$('outVideo').load();$('outImage').removeAttribute('src')}
-function addPart(index){const option=new Option(parts[index].name,String(index));$('parts').add(option);selectPart(index)}
-function selectPart(index){const p=parts[index];if(!p)return;if(selectedURL)URL.revokeObjectURL(selectedURL);selectedURL=URL.createObjectURL(p.blob);$('parts').value=String(index);$('result').hidden=false;$('outVideo').hidden=p.kind!=='video';$('outImage').hidden=p.kind!=='image';if(p.kind==='video'){$('outVideo').src=selectedURL}else{$('outVideo').pause();$('outImage').src=selectedURL}$('meta').textContent=p.meta;
- $('download').onclick=()=>{const a=document.createElement('a');a.href=selectedURL;a.download=p.name;a.click()};
- $('share').hidden=true;try{const file=new File([p.blob],p.name,{type:p.blob.type});if(navigator.canShare?.({files:[file]})){$('share').hidden=false;$('share').onclick=async()=>{try{await navigator.share({files:[file]})}catch(e){if(e.name!=='AbortError')status('Sharing failed. Use Download.')}}}}catch(e){}
+
+function clearResults(){
+ if(selectedURL)URL.revokeObjectURL(selectedURL);
+ selectedURL=null;
+ parts=[];
+ $('parts').replaceChildren();
+ $('result').hidden=true;
+ $('outVideo').pause();
+ $('outVideo').removeAttribute('src');
+ $('outVideo').load();
+ $('outImage').removeAttribute('src');
 }
+
+function addPart(index){
+ const option=new Option(parts[index].name,String(index));
+ $('parts').add(option);
+ selectPart(index);
+}
+
+function selectPart(index){
+ const p=parts[index];
+ if(!p)return;
+ if(selectedURL)URL.revokeObjectURL(selectedURL);
+ selectedURL=URL.createObjectURL(p.blob);
+ $('parts').value=String(index);
+ $('result').hidden=false;
+ $('outVideo').hidden=p.kind!=='video';
+ $('outImage').hidden=p.kind!=='image';
+
+ if(p.kind==='video'){
+  $('outVideo').src=selectedURL;
+ }else{
+  $('outVideo').pause();
+  $('outImage').src=selectedURL;
+ }
+ $('meta').textContent=p.meta;
+
+ $('download').onclick=()=>{
+  const a=document.createElement('a');
+  a.href=selectedURL;
+  a.download=p.name;
+  a.click();
+ };
+
+ $('share').hidden=true;
+ try{
+  const file=new File([p.blob],p.name,{type:p.blob.type});
+  if(navigator.canShare?.({files:[file]})){
+   $('share').hidden=false;
+   $('share').onclick=async()=>{
+    try{
+     await navigator.share({files:[file]});
+    }catch(e){
+     if(e.name!=='AbortError')status('Sharing failed. Use Download.');
+    }
+   };
+  }
+ }catch(e){}
+}
+
 $('parts').onchange=()=>selectPart(Number($('parts').value));
-$('file').onchange=()=>{if(busy)return;clearResults();sourceFile=$('file').files[0]||null;if(sourceURL)URL.revokeObjectURL(sourceURL);sourceURL=null;if(!sourceFile){$('run').disabled=true;return}sourceURL=URL.createObjectURL(sourceFile);$('sourceName').textContent=sourceFile.name+' · '+mb(sourceFile.size);$('run').disabled=false;const image=sourceFile.type.startsWith('image/');$('settings').hidden=image;$('sourceVideo').hidden=image;$('sourceImage').hidden=!image;if(image){$('sourceVideo').pause();$('sourceImage').src=sourceURL}else{$('sourceVideo').src=sourceURL}status('Ready. Use the original file for the best comparison.',0)};
-$('cancel').onclick=()=>{cancelled=true;try{activeEncoder?.close()}catch(e){}try{activeOutput?.cancel().catch(()=>{})}catch(e){}if(ff){ff.stop();ff=null}status('Cancelling…')};
-$('run').onclick=async()=>{
- if(busy||!sourceFile)return;busy=true;cancelled=false;clearResults();$('sourceVideo').pause();
- const controls=[...document.querySelectorAll('#settings select,#settings input,#file,#run')];controls.forEach(e=>e.disabled=true);$('cancel').hidden=false;
- const start=performance.now();
- try{try{wakeLock=await navigator.wakeLock?.request('screen')}catch(e){}
-  if(sourceFile.type.startsWith('image/'))await photo();else await video();guard();
-  status(`Ready · ${parts.length} file(s) · ${((performance.now()-start)/1000).toFixed(0)} seconds. Preview and test the posted Status.`,1);
- }catch(e){console.error(e);status(cancelled?'Cancelled. Completed parts remain available.':e.message,0)}
- finally{busy=false;controls.forEach(e=>e.disabled=false);$('cancel').hidden=true;try{await wakeLock?.release()}catch(e){}wakeLock=null;if(ff){ff.stop();ff=null}}
+
+$('file').onchange=()=>{
+ if(busy)return;
+ clearResults();
+ sourceFile=$('file').files[0]||null;
+ if(sourceURL)URL.revokeObjectURL(sourceURL);
+ sourceURL=null;
+
+ if(!sourceFile){
+  $('run').disabled=true;
+  return;
+ }
+
+ sourceURL=URL.createObjectURL(sourceFile);
+ $('sourceName').textContent=sourceFile.name+' · '+mb(sourceFile.size);
+ $('run').disabled=false;
+
+ const image=sourceFile.type.startsWith('image/');
+ $('settings').hidden=image;
+ $('sourceVideo').hidden=image;
+ $('sourceImage').hidden=!image;
+
+ if(image){
+  $('sourceVideo').pause();
+  $('sourceImage').src=sourceURL;
+ }else{
+  $('sourceVideo').src=sourceURL;
+ }
+ status('Ready. Use the original file for the best comparison.',0);
 };
 
-$('removePart').onclick=()=>{const index=Number($('parts').value);if(!parts[index])return;parts.splice(index,1);$('parts').replaceChildren();parts.forEach((p,i)=>$('parts').add(new Option(p.name,String(i))));if(parts.length)selectPart(Math.min(index,parts.length-1));else{if(selectedURL)URL.revokeObjectURL(selectedURL);selectedURL=null;$('outVideo').pause();$('outVideo').removeAttribute('src');$('outVideo').load();$('outImage').removeAttribute('src');$('result').hidden=true;}};
+$('cancel').onclick=()=>{
+ cancelled=true;
+ try{activeEncoder?.close()}catch(e){}
+ try{activeOutput?.cancel().catch(()=>{})}catch(e){}
+ if(ff){
+  ff.stop();
+  ff=null;
+ }
+ status('Cancelling…');
+};
 
-</script></body></html>
+$('run').onclick=async()=>{
+ if(busy||!sourceFile)return;
+ busy=true;
+ cancelled=false;
+ clearResults();
+ $('sourceVideo').pause();
+
+ const controls=[
+  ...document.querySelectorAll(
+   '#settings select,#settings input,#file,#run'
+  )
+ ];
+ controls.forEach(e=>e.disabled=true);
+ $('cancel').hidden=false;
+ const start=performance.now();
+
+ try{
+  try{
+   wakeLock=await navigator.wakeLock?.request('screen');
+  }catch(e){}
+
+  if(sourceFile.type.startsWith('image/'))await photo();
+  else await video();
+  guard();
+
+  status(
+   `Ready · ${parts.length} file(s) · `+
+   `${((performance.now()-start)/1000).toFixed(0)} seconds. `+
+   'Preview and test the posted Status.',
+   1
+  );
+ }catch(e){
+  console.error(e);
+  status(
+   cancelled?'Cancelled. Completed parts remain available.':e.message,
+   0
+  );
+ }finally{
+  busy=false;
+  controls.forEach(e=>e.disabled=false);
+  $('cancel').hidden=true;
+  try{await wakeLock?.release()}catch(e){}
+  wakeLock=null;
+  if(ff){
+   ff.stop();
+   ff=null;
+  }
+ }
+};
+
+$('removePart').onclick=()=>{
+ const index=Number($('parts').value);
+ if(!parts[index])return;
+ parts.splice(index,1);
+ $('parts').replaceChildren();
+ parts.forEach((p,i)=>
+  $('parts').add(new Option(p.name,String(i)))
+ );
+
+ if(parts.length){
+  selectPart(Math.min(index,parts.length-1));
+ }else{
+  if(selectedURL)URL.revokeObjectURL(selectedURL);
+  selectedURL=null;
+  $('outVideo').pause();
+  $('outVideo').removeAttribute('src');
+  $('outVideo').load();
+  $('outImage').removeAttribute('src');
+  $('result').hidden=true;
+ }
+};
+</script>
+</body>
+</html>
