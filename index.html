@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101827">
-<title>ClearSend v5.2 — GPU Status (Sharpness & WhatsApp Tuned)</title>
+<title>ClearSend v5.2.1 — GPU Status (Sharpness & WhatsApp Tuned)</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#121d2e;--panel2:#172438;--line:#29384e;--text:#edf4ff;--muted:#9aabc2;--blue:#63a8ff;--cyan:#53e0d0;--good:#6ee7b7;--warn:#ffd18a}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -15%,#1c3556 0,transparent 48%),var(--bg);color:var(--text);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -28,7 +28,7 @@ progress{width:100%;height:12px;accent-color:#53e0d0}#settings{display:grid;gap:
 <body>
 <main class="shell">
 <header class="top">
-  <div class="brand"><div class="logo">C</div>ClearSend <small>v5.2</small></div>
+  <div class="brand"><div class="logo">C</div>ClearSend <small>v5.2.1</small></div>
   <div class="local">Private · on-device</div>
 </header>
 
@@ -42,7 +42,7 @@ progress{width:100%;height:12px;accent-color:#53e0d0}#settings{display:grid;gap:
   <section class="panel">
     <div class="step">01 / Original media</div>
     <label for="file">Choose an original video or photo</label>
-    <input id="file" type="file" accept="video/*,image/*" style="display:block;width:100%;margin-top:12px">
+    <input id="file" type="file" accept="video/*,image/*,.mp4,.mov,.m4v,.webm,.jpg,.jpeg,.png,.heic" style="display:block;width:100%;margin-top:12px">
     <p id="sourceName" class="hint">No fixed input-file-size cap. Browser memory and codec support still apply.</p>
     <video id="sourceVideo" class="preview" controls playsinline hidden></video>
     <img id="sourceImage" class="preview" alt="Original photo" hidden>
@@ -126,7 +126,7 @@ progress{width:100%;height:12px;accent-color:#53e0d0}#settings{display:grid;gap:
     </div>
   </section>
 </div>
-<div class="footer">ClearSend v5.2 · GPU Lanczos + Unsharp Pass · Tuned for WhatsApp Status</div>
+<div class="footer">ClearSend v5.2.1 · GPU Lanczos + Unsharp Pass · Tuned for WhatsApp Status</div>
 </main>
 
 <script>
@@ -290,7 +290,6 @@ class StatusGPU {
  ensureRgb(width,height,rotation){
   if(this.rgb)return;
   const rotatedW=rotation%180?height:width,rotatedH=rotation%180?width:height;
-  // Allow up to 3x ratio so 4K (2160p) -> 720p scales cleanly via Lanczos instead of bilinear clamping
   const ratio=Math.max(1,Math.min(3,rotatedW/this.w,rotatedH/this.h));
   const iw=Math.round(this.w*ratio),ih=Math.round(this.h*ratio);
   this.rgb=this.target(iw,ih);
@@ -315,7 +314,6 @@ class StatusGPU {
    this.uniform(r,'direction','uniform1i',0);this.uniform(r,'limit','uniform1i',this.rgb.w);this.uniform(r,'ratio','uniform1f',this.rgb.w/this.w);this.draw(r,this.horizontal);
    this.bindSource(r,this.horizontal.t);this.uniform(r,'direction','uniform1i',1);this.uniform(r,'limit','uniform1i',this.rgb.h);this.uniform(r,'ratio','uniform1f',this.rgb.h/this.h);this.draw(r,this.final);source=this.final.t;
   }
-  // Apply adaptive unsharp pass on the final scaled texture
   if(this.sharpAmount>0.001){
    this.bindSource(this.sharpen,source);
    this.uniform(this.sharpen,'size','uniform2i',this.w,this.h);
@@ -338,13 +336,18 @@ const $=id=>document.getElementById(id);
 const BT709={primaries:'bt709',transfer:'bt709',matrix:'bt709',fullRange:false};
 const tagged=meta=>meta&&meta.decoderConfig?{...meta,decoderConfig:{...meta.decoderConfig,colorSpace:BT709}}:meta;
 
-// 4.8 MB target keeps 15s and 30s clips safely under WhatsApp Status & Standard Chat re-encoding thresholds
 const TARGET=4_800_000;
 let sourceFile=null,sourceURL=null,library=null,busy=false,cancelled=false,activeEncoder=null,activeOutput=null,parts=[],selectedURL=null,ff=null,wakeLock=null;
 const mb=n=>(n/1e6).toFixed(2)+' MB';
-function status(t,p){\$('status').textContent=t;if(Number.isFinite(p))\$('progress').value=Math.max(0,Math.min(1,p))}
+function status(t,p){$('status').textContent=t;if(Number.isFinite(p))$('progress').value=Math.max(0,Math.min(1,p))}
 function guard(){if(cancelled)throw Error('Cancelled')}
 const tick=()=>new Promise(r=>setTimeout(r,0));
+
+function isImageFile(file){
+ if(!file)return false;
+ if(file.type&&file.type.startsWith('image/'))return true;
+ return /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif)$/i.test(file.name||'');
+}
 
 async function media(){
  if(library)return library;
@@ -359,4 +362,305 @@ function dimensions(w,h){const scale=Math.min(1,Number($('resolution').value)/Ma
 function budget(duration,audioRate){
  const available=TARGET*8*0.96/duration-audioRate;
  if(available<64000)throw Error('This clip is too long for the size budget. Select 15- or 30-second parts.');
- 
+ return Math.floor(Math.min(2000000,available)/1000)*1000;
+}
+
+function splitPlan(duration){const length=Number($('split').value);let count=length?Math.ceil((duration-1e-6)/length):1;if(length&&count>1&&duration-(count-1)*length<0.25)count--;return Array.from({length:count},(_,index)=>({start:length?index*length:0,duration:index===count-1?duration-(length?index*length:0):length}))}
+
+async function encoderConfig(w,h,fps,rate){
+ for(const acceleration of ['prefer-hardware','no-preference']){
+  for(const profile of ['6400','4d00','4200'])for(const level of ['28','2a','33']){
+   const config={codec:'avc1.'+profile+level,width:w,height:h,bitrate:rate,framerate:fps,bitrateMode:'variable',latencyMode:'quality',hardwareAcceleration:acceleration,avc:{format:'avc'}};
+   try{if((await VideoEncoder.isConfigSupported(config)).supported)return config}catch(e){}
+  }
+ }
+ throw Error('This browser cannot encode H.264 at the selected dimensions. Try 720p or v4.');
+}
+
+async function copyAudio(M,track,source,start,end){
+ if(!track)return;
+ const sink=new M.EncodedPacketSink(track),first=await sink.getPacket(start)||await sink.getFirstPacket();
+ if(!first)throw Error('Audio track contains no packets.');
+ const config=await track.getDecoderConfig();let sent=false;
+ for await(const packet of sink.packets(first)){
+  guard();if(packet.timestamp>=end)break;
+  if(packet.timestamp+packet.duration<=start)continue;
+  const begin=Math.max(start,packet.timestamp),finish=Math.min(end,packet.timestamp+packet.duration);
+  if(finish<=begin)continue;
+  await source.add(packet.clone({timestamp:begin-start,duration:finish-begin}),sent?undefined:{decoderConfig:config});sent=true;
+ }
+ source.close();
+}
+
+async function nativePart(M,track,audio,colour,plan,dims,fps,rate){
+ guard();const output=new M.Output({format:new M.Mp4OutputFormat({fastStart:'in-memory'}),target:new M.BufferTarget()});
+ activeOutput=output;
+ const videoSource=new M.EncodedVideoPacketSource('avc');output.addVideoTrack(videoSource,{frameRate:fps});
+ const audioSource=audio?new M.EncodedAudioPacketSource('aac'):null;if(audioSource)output.addAudioTrack(audioSource);
+ const config=await encoderConfig(dims.w,dims.h,fps,rate);
+ const sharpAmount=Number($('sharpness').value)||0;
+ let gpu=null,encoder=null,mux=Promise.resolve(),failure=null,encodedBytes=0;
+ try{
+  gpu=new StatusGPU(dims.w,dims.h,sharpAmount);
+  await output.start();
+  encoder=new VideoEncoder({output:(chunk,meta)=>{
+   encodedBytes+=chunk.byteLength;
+   if(encodedBytes>160_000_000){failure=Error('Intermediate output is too large for this browser. Select shorter parts.');return}
+   mux=mux.then(()=>videoSource.add(M.EncodedPacket.fromEncodedChunk(chunk),tagged(meta))).catch(e=>{failure=e});
+  },error:e=>{failure=e}});
+  activeEncoder=encoder;encoder.configure(config);
+  await copyAudio(M,audio,audioSource,plan.start,plan.start+plan.duration);
+  const count=Math.max(1,Math.ceil(plan.duration*fps-1e-6));
+  function* times(){for(let n=0;n<count;n++)yield plan.start+n/fps}
+  const sink=new M.VideoSampleSink(track,{hardwareAcceleration:'no-preference'});
+  let index=0,lastYield=performance.now();
+  const keyInterval=Math.max(1,Math.round(fps*2));
+  for await(const sample of sink.samplesAtTimestamps(times())){
+   if(cancelled||failure){sample?.close();guard();throw failure}
+   if(!sample)throw Error('A requested video frame could not be decoded.');
+   let frame=null;
+   try{
+    const timestamp=index/fps,duration=Math.min(1/fps,plan.duration-timestamp);
+    frame=await gpu.frame(sample,colour,timestamp,duration);
+    encoder.encode(frame,{keyFrame:index%keyInterval===0});
+   }finally{frame?.close();sample.close()}
+   index++;
+   while(encoder.encodeQueueSize>4){guard();if(failure)throw failure;await tick()}
+   await mux;if(failure)throw failure;
+   if(performance.now()-lastYield>120){status(`Preparing complete video frames · ${index}/${count}`,index/count*0.80);await tick();lastYield=performance.now()}
+  }
+  guard();await encoder.flush();await mux;if(failure)throw failure;
+  videoSource.close();await output.finalize();guard();
+  const blob=new Blob([output.target.buffer],{type:'video/mp4'});
+  return {blob,codec:config.codec,acceleration:config.hardwareAcceleration};
+ }finally{
+  activeEncoder=null;activeOutput=null;
+  if(encoder&&encoder.state!=='closed')encoder.close();
+  try{await output.cancel()}catch(e){}
+  gpu?.close();
+ }
+}
+
+async function verify(M,blob,dims,duration,fps,hasAudio,checkSize=true){
+ if(checkSize&&blob.size>TARGET)throw Error('Export exceeds the 4.8 MB target.');
+ const input=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(blob)});
+ try{
+  const track=await input.getPrimaryVideoTrack();if(!track||await track.getCodec()!=='avc')throw Error('Export is not H.264.');
+  const w=await track.getDisplayWidth(),h=await track.getDisplayHeight(),d=await input.computeDuration();
+  if(w!==dims.w||h!==dims.h||!Number.isFinite(d)||Math.abs(d-duration)>0.3)throw Error('Export dimensions or duration failed verification.');
+  const c=await track.getColorSpace();
+  const colour=c.primaries==='bt709'&&c.transfer==='bt709'&&c.matrix==='bt709'&&c.fullRange===false?'BT.709 limited tags':'colour tags: '+[c.primaries,c.transfer,c.matrix,c.fullRange===undefined?undefined:c.fullRange?'full':'limited'].map(x=>x||'none').join('/');
+  if(hasAudio&&!await input.getPrimaryAudioTrack())throw Error('Audio was lost during conversion.');
+  const stats=await track.computePacketStats();if(fps>=20&&stats.averagePacketRate<fps*0.90)throw Error('Export frame rate is too low.');
+  return {w,h,duration:d,fps:stats.averagePacketRate,colour};
+ }finally{input.dispose()}
+}
+
+async function loadFF(){
+ if(ff)return ff;
+ status('Loading x264 finishing engine…',0.8);
+ const base='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+ const assets=await Promise.all(['ffmpeg-core.js','ffmpeg-core.wasm'].map(async(name,index)=>{const response=await fetch(base+'/'+name);if(!response.ok)throw Error('Could not download x264 engine.');return URL.createObjectURL(new Blob([await response.arrayBuffer()],{type:index?'application/wasm':'text/javascript'}))}));
+ if(cancelled){assets.forEach(URL.revokeObjectURL);guard()}
+ const code=`let core;self.onmessage=async e=>{const {id,type,data}=e.data;try{let result;if(type==='load'){importScripts(data.js);core=await self.createFFmpegCore({mainScriptUrlOrBlob:data.js+'#'+btoa(JSON.stringify({wasmURL:data.wasm}))});core.setLogger(x=>self.postMessage({log:x.message}));core.setProgress(x=>self.postMessage({progress:x.progress}));result=true}else if(type==='write'){core.FS.writeFile(data.name,new Uint8Array(data.buffer));result=true}else if(type==='exec'){core.setTimeout(-1);core.exec(...data.args);result=core.ret;core.reset()}else if(type==='read'){result=core.FS.readFile(data.name);self.postMessage({id,result},[result.buffer]);return}else if(type==='remove'){try{core.FS.unlink(data.name)}catch(e){}result=true}self.postMessage({id,result})}catch(error){self.postMessage({id,error:error.message})}}`;
+ const url=URL.createObjectURL(new Blob([code],{type:'text/javascript'})),worker=new Worker(url);
+ let sequence=0,closed=false;const pending=new Map();const logs=[];
+ const engine={logs,call(type,data={},transfer=[]){if(closed)return Promise.reject(Error('Encoder was stopped'));return new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject});worker.postMessage({id,type,data},transfer)})},stop(){if(closed)return;closed=true;worker.terminate();for(const p of pending.values())p.reject(Error('Encoder stopped'));pending.clear();URL.revokeObjectURL(url);assets.forEach(URL.revokeObjectURL)}};
+ worker.onmessage=e=>{const d=e.data;if(d.log){logs.push(d.log);if(logs.length>30)logs.shift();return}if(typeof d.progress==='number'){if(!cancelled)status('x264 finishing · '+Math.round(d.progress*100)+'%',0.8+Math.min(1,Math.max(0,d.progress))*0.18);return}const p=pending.get(d.id);if(p){pending.delete(d.id);d.error?p.reject(Error(d.error)):p.resolve(d.result)}};
+ worker.onerror=e=>{engine.stop();if(ff===engine)ff=null};
+ ff=engine;
+ try{await engine.call('load',{js:assets[0],wasm:assets[1]});guard();return engine}catch(e){engine.stop();if(ff===engine)ff=null;throw e}
+}
+
+async function finishX264(blob,rate,hasAudio){
+ const engine=await loadFF();guard();
+ const buffer=await blob.arrayBuffer();guard();await engine.call('write',{name:'input.mp4',buffer},[buffer]);
+ try{
+  const args=[
+   '-i','input.mp4',
+   '-map','0:v:0',
+   '-c:v','libx264',
+   '-preset',$('preset').value,
+   '-tune','film',
+   '-b:v',String(rate),
+   '-maxrate',String(rate),
+   '-bufsize',String(Math.round(rate*1.5)),
+   '-x264-params','aq-mode=2:aq-strength=0.9:deblock=-1,-1',
+   '-profile:v','high',
+   '-g','60',
+   '-bf','2',
+   '-pix_fmt','yuv420p',
+   '-color_range','tv',
+   '-colorspace','bt709',
+   '-color_primaries','bt709',
+   '-color_trc','bt709'
+  ];
+  if(hasAudio)args.push('-map','0:a:0?','-c:a','aac','-b:a','128k','-ar','44100','-ac','2');else args.push('-an');
+  args.push('-map_metadata','-1','-map_chapters','-1','-movflags','+faststart','-y','output.mp4');
+  const code=await engine.call('exec',{args});guard();if(code!==0)throw Error('x264 failed: '+engine.logs.slice(-4).join(' '));
+  const bytes=await engine.call('read',{name:'output.mp4'});return new Blob([bytes],{type:'video/mp4'});
+ }finally{try{await engine.call('remove',{name:'input.mp4'});await engine.call('remove',{name:'output.mp4'})}catch(e){}}
+}
+
+async function video(){
+ const M=await media();guard();
+ if(!window.VideoEncoder||!window.VideoDecoder||!window.VideoFrame)throw Error('WebCodecs is unavailable. Open this page over HTTPS in a supported browser, or use v4.');
+ const input=new M.Input({formats:M.ALL_FORMATS,source:new M.BlobSource(sourceFile,{maxCacheSize:8*1024*1024})});
+ try{
+  const track=await input.getPrimaryVideoTrack();if(!track)throw Error('No readable video track.');
+  if(!await track.canDecode())throw Error('This browser cannot decode the source codec through WebCodecs. Try Safari on the iPhone for HEVC, or use v4.');
+  const colour=await track.getColorSpace(),first=Math.max(0,await track.getFirstTimestamp()),last=await track.computeDuration();
+  const duration=last-first;if(!Number.isFinite(duration)||duration<=0)throw Error('Invalid source duration.');
+  let fps=(await track.computeFrameRateMetrics()).bestGuessFrameRate||30;fps=Math.min(30,fps);
+  const dims=dimensions(await track.getDisplayWidth(),await track.getDisplayHeight());
+  const audio=$('audio').checked?await input.getPrimaryAudioTrack():null;
+  if(audio&&await audio.getCodec()!=='aac')throw Error('This fast path needs AAC audio. Turn off audio or use v4 to convert this source.');
+  const hybrid=$('engine').value==='hybrid';
+  const audioRate=audio?(hybrid?128000:Math.max(128000,(await audio.getAverageBitrate())||(await audio.getBitrate())||256000)):0;
+  const plan=splitPlan(duration);
+  const rates=plan.map(p=>budget(p.duration,audioRate));
+  for(let index=0;index<plan.length;index++){
+   guard();const part=plan[index],absolute={start:first+part.start,duration:part.duration};
+   let rate=rates[index],native=null,blob=null;
+   status(`Part ${index+1}/${plan.length} · preparing…`,0);
+   for(let attempt=0;attempt<2;attempt++){
+    guard();
+    if(!hybrid||!native){
+     const preparationRate=hybrid?Math.max(rate*3,Math.min(20000000,96_000_000*8/part.duration)):rate;
+     native=await nativePart(M,track,audio,colour,absolute,dims,fps,preparationRate);
+     await verify(M,native.blob,dims,part.duration,fps,!!audio,false);
+    }
+    blob=hybrid?await finishX264(native.blob,rate,!!audio):native.blob;
+    if(blob.size<=TARGET)break;
+    if(attempt===1)throw Error('Output still exceeds 4.8 MB. Use shorter parts or 720p.');
+    rate=Math.floor(rate*(TARGET/blob.size)*0.88/1000)*1000;
+    if(rate<64000)throw Error('The size budget is too low. Select shorter parts.');
+    status('Size check: retrying at a lower bitrate…',0);
+   }
+   guard();const info=await verify(M,blob,dims,part.duration,fps,!!audio);
+   const name=sourceFile.name.replace(/\.[^.]+$/,'')+'_clearsend_v5-2'+(plan.length>1?'_part_'+String(index+1).padStart(2,'0'):'')+'.mp4';
+   parts.push({blob,name,meta:`${dims.w} × ${dims.h} · ${info.fps.toFixed(2)} FPS · ${mb(blob.size)} · ${hybrid?'GPU + x264':'GPU + browser H.264'} · sharp ${$('sharpness').value} · ${info.colour}`,kind:'video'});
+   addPart(parts.length-1);native=null;
+  }
+ }finally{input.dispose()}
+}
+
+async function photo(){
+ const bitmap=await createImageBitmap(sourceFile,{imageOrientation:'from-image'});
+ try{
+  if(bitmap.width*bitmap.height>80e6)throw Error('Photo is too large for browser pixel processing.');
+  const factor=Math.min(1,1920/Math.max(bitmap.width,bitmap.height));
+  const w=Math.round(bitmap.width*factor),h=Math.round(bitmap.height*factor);
+  let source=bitmap,iw=bitmap.width,ih=bitmap.height;
+  while(Math.max(iw/w,ih/h)>2.1){const c=document.createElement('canvas');c.width=Math.max(w,Math.round(iw/2));c.height=Math.max(h,Math.round(ih/2));const x=c.getContext('2d',{alpha:false});x.fillStyle='white';x.fillRect(0,0,c.width,c.height);x.imageSmoothingQuality='high';x.drawImage(source,0,0,c.width,c.height);source=c;iw=c.width;ih=c.height;}
+  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:true});ctx.fillStyle='white';ctx.fillRect(0,0,w,h);ctx.imageSmoothingQuality='high';ctx.drawImage(source,0,0,w,h);
+  const soft=document.createElement('canvas');soft.width=w;soft.height=h;const bx=soft.getContext('2d',{willReadFrequently:true});bx.filter='blur(0.85px)';bx.drawImage(canvas,0,0);
+  const original=ctx.getImageData(0,0,w,h),blur=bx.getImageData(0,0,w,h);
+  for(let n=0;n<original.data.length;n+=4)for(let c=0;c<3;c++)original.data[n+c]=Math.max(0,Math.min(255,original.data[n+c]+0.22*Math.max(-28,Math.min(28,original.data[n+c]-blur.data[n+c]))));
+  ctx.putImageData(original,0,0);
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Photo export failed')),'image/jpeg',0.93));guard();
+  parts.push({blob,name:sourceFile.name.replace(/\.[^.]+$/,'')+'_clearsend.jpg',kind:'image',meta:`${w} × ${h} · ${mb(blob.size)} · JPEG 93% · gentle sharpening`});addPart(0);
+ }finally{bitmap.close()}
+}
+
+function clearResults(){
+ try{if(selectedURL)URL.revokeObjectURL(selectedURL);}catch(e){}
+ selectedURL=null;parts=[];$('parts').replaceChildren();$('result').hidden=true;
+ try{$('outVideo').pause();$('outVideo').removeAttribute('src');$('outVideo').load();$('outImage').removeAttribute('src');}catch(e){}
+}
+
+function addPart(index){const option=new Option(parts[index].name,String(index));$('parts').add(option);selectPart(index)}
+
+function selectPart(index){
+ const p=parts[index];if(!p)return;
+ try{if(selectedURL)URL.revokeObjectURL(selectedURL);}catch(e){}
+ selectedURL=URL.createObjectURL(p.blob);$('parts').value=String(index);$('result').hidden=false;$('outVideo').hidden=p.kind!=='video';$('outImage').hidden=p.kind!=='image';
+ if(p.kind==='video'){$('outVideo').src=selectedURL}else{$('outVideo').pause();$('outImage').src=selectedURL}
+ $('meta').textContent=p.meta;
+ $('download').onclick=()=>{const a=document.createElement('a');a.href=selectedURL;a.download=p.name;a.click()};
+ $('share').hidden=true;
+ try{
+  const file=new File([p.blob],p.name,{type:p.blob.type});
+  if(navigator.canShare?.({files:[file]})){
+   $('share').hidden=false;
+   $('share').onclick=async()=>{try{await navigator.share({files:[file]})}catch(e){if(e.name!=='AbortError')status('Sharing failed. Use Download.')}};
+  }
+ }catch(e){}
+}
+
+$('parts').onchange=()=>selectPart(Number($('parts').value));
+
+function handleFileSelect(){
+ if(busy)return;
+ clearResults();
+ const files=$('file').files;
+ sourceFile=(files&&files.length>0)?files[0]:null;
+ try{if(sourceURL)URL.revokeObjectURL(sourceURL);}catch(e){}
+ sourceURL=null;
+ if(!sourceFile){
+  $('run').disabled=true;
+  status('Choose an original file.',0);
+  return;
+ }
+ // Enable button immediately so preview issues never block processing
+ $('run').disabled=false;
+ $('sourceName').textContent=(sourceFile.name||'Selected media')+' · '+mb(sourceFile.size||0);
+ const image=isImageFile(sourceFile);
+ $('settings').hidden=image;
+ try{
+  sourceURL=URL.createObjectURL(sourceFile);
+  $('sourceVideo').hidden=image;
+  $('sourceImage').hidden=!image;
+  if(image){
+   $('sourceVideo').pause();
+   $('sourceImage').src=sourceURL;
+  }else{
+   $('sourceVideo').src=sourceURL;
+  }
+ }catch(e){
+  console.warn('Preview error:',e);
+ }
+ status('Ready. Tap "Prepare media" below to start.',0);
+}
+
+$('file').addEventListener('change',handleFileSelect);
+$('file').addEventListener('input',handleFileSelect);
+
+$('cancel').onclick=()=>{cancelled=true;try{activeEncoder?.close()}catch(e){}try{activeOutput?.cancel().catch(()=>{})}catch(e){}if(ff){ff.stop();ff=null}status('Cancelling…')};
+
+$('run').onclick=async()=>{
+ if(busy||!sourceFile)return;busy=true;cancelled=false;clearResults();
+ try{$('sourceVideo').pause();}catch(e){}
+ const controls=[...document.querySelectorAll('#settings select,#settings input,#file,#run')];controls.forEach(e=>e.disabled=true);$('cancel').hidden=false;
+ const start=performance.now();
+ try{
+  try{wakeLock=await navigator.wakeLock?.request('screen')}catch(e){}
+  if(isImageFile(sourceFile))await photo();else await video();
+  guard();
+  status(`Ready · ${parts.length} file(s) · ${((performance.now()-start)/1000).toFixed(0)} seconds. Preview and test the posted Status.`,1);
+ }catch(e){
+  console.error(e);
+  status(cancelled?'Cancelled. Completed parts remain available.':(e?.message||String(e)),0);
+ }finally{
+  busy=false;controls.forEach(e=>e.disabled=false);$('cancel').hidden=true;
+  try{await wakeLock?.release()}catch(e){}wakeLock=null;
+  if(ff){ff.stop();ff=null}
+ }
+};
+
+$('removePart').onclick=()=>{
+ const index=Number($('parts').value);if(!parts[index])return;
+ parts.splice(index,1);$('parts').replaceChildren();
+ parts.forEach((p,i)=>$('parts').add(new Option(p.name,String(i))));
+ if(parts.length)selectPart(Math.min(index,parts.length-1));
+ else{
+  try{if(selectedURL)URL.revokeObjectURL(selectedURL);}catch(e){}
+  selectedURL=null;
+  try{$('outVideo').pause();$('outVideo').removeAttribute('src');$('outVideo').load();$('outImage').removeAttribute('src');}catch(e){}
+  $('result').hidden=true;
+ }
+};
+</script>
+</body>
+</html>
